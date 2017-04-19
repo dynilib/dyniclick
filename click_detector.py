@@ -200,7 +200,7 @@ if __name__ == "__main__":
 
     with open(output, "w") as f:
         for k, v in clicks.items():
-            f.write("{:.3f},{:.3f}\n".format(k / env_sr, v))
+            f.write("{:.3f},{:.3f}\n".format(k / float(env_sr), v))
 
     if show:
         # plot stuff
