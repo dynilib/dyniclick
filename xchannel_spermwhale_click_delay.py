@@ -123,8 +123,8 @@ if __name__ == "__main__":
         threshold = 10 # arbitrary threshold to be investigated some day
         if ratio < threshold:
             xcorr = np.abs(np.correlate(ch1, ch2, "same"))
-            xc_delay = (np.argmax(xcorr) - ac_d0) / sr
-            ipi = (peak_ind - ac_d0) / sr
+            xc_delay = (np.argmax(xcorr) - ac_d0) / float(sr)
+            ipi = (peak_ind - ac_d0) / float(sr)
             delays.append((c, v, xc_delay, ipi, ac_v0, peak_value))
 
     if delays:
