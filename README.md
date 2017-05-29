@@ -33,5 +33,11 @@ python click_detector.py someaudiofile.wav someaudiofile.clicks --cutoff_freqs 1
 Click IPIs and cross-channel delay:
 
 ```sh
-python ipi_xchanneldelay_extractor someaudiofile.wav someaudiofile.clicks someaudiofile.delays --cutoff_freq 10000 --ipi_min 0.0015 --ipi_max 0.008 --delay_max 0.0015 --channels 0 1
+python ipi_xchanneldelay_extractor.py someaudiofile.wav someaudiofile.clicks someaudiofile.delays --cutoff_freq 10000 --ipi_min 0.0015 --ipi_max 0.008 --delay_max 0.0015 --channels 0 1
+```
+
+Plot IPIs and cross-channel delays:
+
+```sh
+python plot_utils.py someaudiofile.delays
 ```
