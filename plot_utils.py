@@ -13,13 +13,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_ipi_xchannel_delay(data):
+def plot_ipi_xchannel_delay(data, time_offset):
     # data row: click_time, click_strength, x-channel delay, ipi, ipi salience
 
     f, axarr = plt.subplots(2, sharex=True)
 
     axarr[0].set_title(delay_file)
-    t = np.asarray([c[0] for c in data])
+    t = np.asarray([c[0] for c in data]) + time_offset
     d = np.asarray([c[2] for c in data]) * 1000
     axarr[0].scatter(t, d, marker="x", c="b")
     ylim = np.max(np.abs(data[:,2])) * 1000
@@ -28,7 +28,7 @@ def plot_ipi_xchannel_delay(data):
     axarr[0].grid()
     axarr[0].set_ylabel('x-channel delay (ms)')
 
-    t = np.asarray([c[0] for c in data])
+    t = np.asarray([c[0] for c in data]) + time_offset
     ipi = np.asarray([c[3] for c in data]) * 1000
     axarr[1].scatter(t, ipi, marker="x", c="b")
     ylim = np.max(data[:,3]) * 1000
@@ -47,9 +47,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="""Plot click IPIs and xchannel delays.""")
     parser.add_argument("delay_file", help="Delay + IPI file.")
+    parser.add_argument("--time_offset", type=float, default=0.0, help="Time offset.")
     args = parser.parse_args()
 
     delay_file = args.delay_file
+    time_offset = args.time_offset
 
     # parse file
     data = np.loadtxt(delay_file, delimiter=',')
@@ -57,4 +59,4 @@ if __name__ == "__main__":
     if data.size == 0:
         sys.exit("No data")
 
-    plot_ipi_xchannel_delay(data)
+    plot_ipi_xchannel_delay(data, time_offset)
