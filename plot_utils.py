@@ -38,7 +38,7 @@ def plot_ipi_xchannel_delay(data, time_offset):
     axarr[1].set_xlabel('Time (s)')
     axarr[1].set_ylabel('IPI (ms)')
 
-    plt.tight_layout()
+#    plt.tight_layout()
 
     plt.show()
 
