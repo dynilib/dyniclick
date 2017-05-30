@@ -13,12 +13,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_ipi_xchannel_delay(data, time_offset):
+def plot_ipi_xchannel_delay(data, delay_file, time_offset):
     # data row: click_time, click_strength, x-channel delay, ipi, ipi salience
 
     f, axarr = plt.subplots(2, sharex=True)
 
-    axarr[0].set_title(delay_file)
+    title = delay_file if time_offset == 0.0 else "{}\ntime offset: {}".format(delay_file, time_offset)
+
+    axarr[0].set_title(title)
     t = np.asarray([c[0] for c in data]) + time_offset
     d = np.asarray([c[2] for c in data]) * 1000
     axarr[0].scatter(t, d, marker="x", c="b")
@@ -58,5 +60,5 @@ if __name__ == "__main__":
 
     if data.size == 0:
         sys.exit("No data")
-
-    plot_ipi_xchannel_delay(data, time_offset)
+    
+    plot_ipi_xchannel_delay(data, delay_file, time_offset)
