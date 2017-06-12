@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 def plot_ipi_xchannel_delay(data, delay_file, time_offset):
-    # data row: click_time, click_strength, x-channel delay, ipi, ipi salience
+    # data row: click_time, click_confidence, click_amplitude, x-channel delay, ipi, ipi salience
 
     f, axarr = plt.subplots(2, sharex=True)
 
@@ -22,18 +22,18 @@ def plot_ipi_xchannel_delay(data, delay_file, time_offset):
 
     axarr[0].set_title(title)
     t = np.asarray([c[0] for c in data]) + time_offset
-    d = np.asarray([c[2] for c in data]) * 1000
+    d = np.asarray([c[3] for c in data]) * 1000
     axarr[0].scatter(t, d, marker="x", c="b")
-    ylim = np.max(np.abs(data[:,2])) * 1000
+    ylim = np.max(np.abs(data[:,3])) * 1000
     ylim += ylim / 10
     axarr[0].set_ylim(-ylim, ylim)    
     axarr[0].grid()
     axarr[0].set_ylabel('x-channel delay (ms)')
 
     t = np.asarray([c[0] for c in data]) + time_offset
-    ipi = np.asarray([c[3] for c in data]) * 1000
+    ipi = np.asarray([c[4] for c in data]) * 1000
     axarr[1].scatter(t, ipi, marker="x", c="b")
-    ylim = np.max(data[:,3]) * 1000
+    ylim = np.max(data[:,4]) * 1000
     ylim += ylim / 10
     axarr[1].set_ylim(1, ylim)
     axarr[1].grid()

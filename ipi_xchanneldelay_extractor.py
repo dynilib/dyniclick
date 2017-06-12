@@ -20,6 +20,7 @@ import git
 
 
 CLICK_DURATION = 0.002 # estimated click_duration
+CLIPPING_THRESHOLD = 0.99
 
 
 def build_butter_highpass(cut, sr, order=4):
@@ -61,6 +62,7 @@ if __name__ == "__main__":
     Inter Pulse Interval detection and cross-channel delay measure.
     The algorithm is the following:
     For every click in the click file, in a window (default 0.01s) around the click: 
+        - If check_clipping is set to True, check that the signal is not clipping
         - Filter both channels with highpass filter (default cutoff frequency = 10000 Hz).
         - In channel 1, check if the autocorrelation of the click has a peak in the [ipi_min, ipi_max]
           range (in second) with amplitude higher than a threshold
@@ -68,7 +70,7 @@ if __name__ == "__main__":
 
     The format of each line in the output file is:
     
-    <date>, <time>, <click time>, <click confidence>, <xcorr delay>, <acorr ipi delay>, <acorr value at 0 delay>, <acorr value at ipi delay>
+    <click time>, <click confidence>, <click amplitude>, <xcorr delay>, <acorr ipi delay>, <acorr value at 0 delay>, <acorr value at ipi delay>
     '''), formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument(
         '-v', "--verbose",
@@ -83,6 +85,7 @@ if __name__ == "__main__":
     parser.add_argument("--delay_max", type=float, default=0.0015, help="Maximum cross-channel delay for a click, in s.")
     parser.add_argument("--min_salience", type=float, default=0.08, help="Min ratio between pulse autocorr value and max autocorr value.")
     parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
+    parser.add_argument("--check_clipping", type=int, default=0, help="Check if the signal is clipping.")
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.loglevel)
@@ -96,6 +99,7 @@ if __name__ == "__main__":
     delay_max = args.delay_max
     min_salience = args.min_salience
     channels = args.channels
+    check_clipping = args.check_clipping
 
     #############################
     # open and parse click file #
@@ -129,10 +133,19 @@ if __name__ == "__main__":
         b, a = build_butter_highpass(cutoff_freq, sr)
 
         for t, v in clicks:
-
-            # Get bandpassed audio around the detected clicks
+            
+            # Get needed audio chunk around the click
             win_start_ind = int((t - delay_max) * sr)
             win_end_ind = int((t + delay_max + ipi_max + CLICK_DURATION)* sr)
+
+            # If more the chunk clips during more than CLICK_DURATION,
+            # the click is removed.
+            if (check_clipping and
+                    (np.abs(audio[win_start_ind:win_end_ind, channels[0]]) > CLIPPING_THRESHOLD).sum() > CLICK_DURATION * sr):
+                continue
+
+
+            # Highpass filter
             ch1 = filtfilt(b, a, audio[win_start_ind:win_end_ind, channels[0]])
             ch2 = filtfilt(b, a, audio[win_start_ind:win_end_ind, channels[1]])
 
@@ -144,12 +157,13 @@ if __name__ == "__main__":
                 sr,
                 min_salience)
 
-            #if an IPI is found, compute cross-channel delay from xcorrelation peak
+            #if an IPI is found, get max signal value and compute cross-channel delay from xcorrelation peak
             if ipi:
+                max_value = np.max(np.abs(audio[win_start_ind:win_end_ind, channels[0]]))
                 xcorr = np.abs(np.correlate(ch1, ch2, "same"))
                 delay0 = int(len(xcorr) / 2)
                 delay_max_samples = int(delay_max * sr)
                 delay = (delay_max_samples - np.argmax(xcorr[delay0-delay_max_samples:delay0+delay_max_samples])) / float(sr)
 
-                f.write("{:.3f},{:.3f},{:.6f},{:.6f},{:.3f}\n".format(
-                    t, v, delay, ipi, salience))
+                f.write("{:.3f},{:.3f},{:.3f},{:.6f},{:.6f},{:.3f}\n".format(
+                    t, v, max_value, delay, ipi, salience))
