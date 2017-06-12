@@ -122,7 +122,7 @@ def detect_clicks(
 
         # compute log envelope
         half_hann = build_half_hann(sr, half_hann_duration=HALF_HANN_DURATION)
-        delay = int(((len(half_hann) / sr * ENV_SR) - 1) / 2)
+        delay = int(((len(half_hann) - 1) / 2) / sr * ENV_SR)
         if keep_data:
             envs.append(np.log(get_envelope(bands[-1], sr, half_hann, env_sr=ENV_SR).clip(min=np.finfo(bands[-1].dtype).eps)))
         else:
