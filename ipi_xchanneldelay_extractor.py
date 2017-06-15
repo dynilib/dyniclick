@@ -81,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("output_file", help="IPI and delay file.")
     parser.add_argument("--ipi_min", type=float, default=0.0015, help="Minimum IPI to be detected, in s.")
     parser.add_argument("--ipi_max", type=float, default=0.008, help="Maximum IPI to be detected, in s.")
-    parser.add_argument("--cutoff_freq", type=int, default=10000, help="""Cut-off frequency of the high-pass filter, in Hz.""")
+    parser.add_argument("--cutoff_freq", type=int, default=100, help="""Cut-off frequency of the high-pass filter, in Hz.""")
     parser.add_argument("--delay_max", type=float, default=0.0015, help="Maximum cross-channel delay for a click, in s.")
     parser.add_argument("--min_salience", type=float, default=0.08, help="Min ratio between pulse autocorr value and max autocorr value.")
     parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
