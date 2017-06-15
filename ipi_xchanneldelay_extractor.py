@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
             #if an IPI is found, get max signal value and compute cross-channel delay from xcorrelation peak
             if ipi:
-                max_value = np.max(np.abs(audio[win_start_ind:win_end_ind, channels[0]]))
+                max_value = min(1, np.max(np.abs(ch1))) # filtered signal may have values > 1
                 xcorr = np.abs(np.correlate(ch1, ch2, "same"))
                 delay0 = int(len(xcorr) / 2)
                 delay_max_samples = int(delay_max * sr)
