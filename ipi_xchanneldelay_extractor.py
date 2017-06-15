@@ -85,7 +85,7 @@ if __name__ == "__main__":
     parser.add_argument("--delay_max", type=float, default=0.0015, help="Maximum cross-channel delay for a click, in s.")
     parser.add_argument("--min_salience", type=float, default=0.08, help="Min ratio between pulse autocorr value and max autocorr value.")
     parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
-    parser.add_argument("--check_clipping", type=int, default=0, help="Check if the signal is clipping.")
+    parser.add_argument("--check_clipping", type=int, default=1, help="Check if the signal is clipping.")
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.loglevel)
