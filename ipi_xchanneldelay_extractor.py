@@ -58,7 +58,8 @@ def get_ipi(click, ipi_min, ipi_max, sr, threshold):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description=textwrap.dedent('''
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     description=textwrap.dedent('''
     Inter Pulse Interval detection and cross-channel delay measure.
     The algorithm is the following:
     For every click in the click file, in a window (default 0.01s) around the click: 

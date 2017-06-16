@@ -214,7 +214,8 @@ def plot(audio,
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="""Click detector based on onset
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     description="""Click detector based on onset
         detection.\nA click is detected if an onset is detected in all the frequency
         bands.""")
     parser.add_argument(
