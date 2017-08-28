@@ -139,7 +139,7 @@ if __name__ == "__main__":
             win_start_ind = int((t - delay_max) * sr)
             win_end_ind = int((t + delay_max + ipi_max + CLICK_DURATION)* sr)
 
-            # If more the chunk clips during more than CLICK_DURATION,
+            # If the chunk clips during more than CLICK_DURATION,
             # the click is removed.
             if (check_clipping and
                     (np.abs(audio[win_start_ind:win_end_ind, channels[0]]) > CLIPPING_THRESHOLD).sum() > CLICK_DURATION * sr):
