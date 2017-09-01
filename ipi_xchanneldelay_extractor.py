@@ -56,6 +56,16 @@ def get_ipi(click, ipi_min, ipi_max, sr, threshold):
         return None, None
 
 
+def get_tdoa(ch1, ch2, delay_max):
+
+    xcorr = np.abs(np.correlate(ch1, ch2, "same"))
+    delay0 = int(len(xcorr) / 2)
+    delay_max_samples = int(delay_max * sr)
+    delay = (delay_max_samples - np.argmax(xcorr[delay0-delay_max_samples:delay0+delay_max_samples])) / float(sr)
+
+    return delay
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -158,13 +168,14 @@ if __name__ == "__main__":
                 sr,
                 min_salience)
 
-            #if an IPI is found, get max signal value and compute cross-channel delay from xcorrelation peak
             if ipi:
-                max_value = min(1, np.max(np.abs(ch1))) # filtered signal may have values > 1
-                xcorr = np.abs(np.correlate(ch1, ch2, "same"))
-                delay0 = int(len(xcorr) / 2)
-                delay_max_samples = int(delay_max * sr)
-                delay = (delay_max_samples - np.argmax(xcorr[delay0-delay_max_samples:delay0+delay_max_samples])) / float(sr)
+
+                # compute cross-channel delay from xcorrelation peak
+                tdoa = get_tdoa(ch1, ch2, delay_max)
+
+                # get max signal value
+                max_ind = np.argmax(np.abs(ch1))
+                max_value = min(1, np.abs(ch1[max_ind])) # filtered signal may have values > 1
 
                 f.write("{:.3f},{:.3f},{:.3f},{:.6f},{:.6f},{:.3f}\n".format(
-                    t, v, max_value, delay, ipi, salience))
+                    t, v, max_value, tdoa, ipi, salience))
