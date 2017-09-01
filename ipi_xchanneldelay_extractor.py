@@ -72,7 +72,7 @@ if __name__ == "__main__":
     The format of each line in the output file is:
     
     <click time>, <click confidence>, <click amplitude>, <xcorr delay>, <acorr ipi delay>, <acorr value at 0 delay>, <acorr value at ipi delay>
-    '''), formatter_class=RawDescriptionHelpFormatter)
+    '''))
     parser.add_argument(
         '-v', "--verbose",
         help="Set verbose output", action="store_const", const=logging.DEBUG,
