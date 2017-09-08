@@ -41,3 +41,9 @@ Plot IPIs and cross-channel delays:
 ```sh
 python plot_utils.py someaudiofile.delays
 ```
+
+Add click visualization on top of a video
+
+```sh
+python video_click.py somevideo.mp4 someaudiofile.delays output.mp4 <max tdoa> --offset <offset>
+```
