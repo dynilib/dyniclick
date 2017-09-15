@@ -13,42 +13,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_ipi_xchannel_delay(data, delay_file, time_offset):
-    # data row: click_time, click_confidence, click_amplitude, x-channel delay, ipi, ipi salience
-
-    f, axarr = plt.subplots(3, sharex=True)
-
-    title = delay_file if time_offset == 0.0 else "{}\ntime offset: {}".format(delay_file, time_offset)
-
-    axarr[0].set_title(title)
-    t = np.asarray([c[0] for c in data]) + time_offset
-    d = np.asarray([c[3] for c in data]) * 1000
-    axarr[0].scatter(t, d, marker="x", c="b")
-    ylim = np.max(np.abs(data[:,3])) * 1000
-    ylim += ylim / 10
-    axarr[0].set_ylim(-ylim, ylim)    
-    axarr[0].grid()
-    axarr[0].set_ylabel('x-channel delay (ms)')
-
-    t = np.asarray([c[0] for c in data]) + time_offset
-    ipi = np.asarray([c[4] for c in data]) * 1000
-    axarr[1].scatter(t, ipi, marker="x", c="b")
-    ylim = np.max(data[:,4]) * 1000
-    ylim += ylim / 10
-    axarr[1].set_ylim(1, ylim)
-    axarr[1].grid()
-    axarr[1].set_xlabel('Time (s)')
-    axarr[1].set_ylabel('IPI (ms)')
+def plot_data(click_file, data, feat_names, feat_thres, time_offset):
     
-    t = np.asarray([c[0] for c in data]) + time_offset
-    ipi = np.asarray([c[2] for c in data])
-    axarr[2].scatter(t, ipi, marker="x", c="b")
-    ylim = np.max(data[:,2])
-    ylim += ylim / 10
-    axarr[2].set_ylim(0, ylim)
-    axarr[2].grid()
-    axarr[2].set_xlabel('Time (s)')
-    axarr[2].set_ylabel('Click amplitude')
+    f, axarr = plt.subplots(len(feat_names), sharex=True)
+
+    title = click_file if time_offset == 0.0 else "{}\ntime offset: {}".format(click_file, time_offset)
+    axarr[0].set_title(title)
+
+    t = np.asarray([d[0] for d in data]) + time_offset
+
+    for i in range(len(feat_names)):
+
+        d = np.asarray([d[i+1] for d in data])
+        axarr[i].scatter(t, d, marker="x", c="b")
+        ymin = np.min(data[:,i+1])
+        ymin = ymin - np.abs(ymin) / 10
+        ymax = np.max(data[:,i+1])
+        ymax = ymax + np.abs(ymax) / 10
+        axarr[i].set_ylim(ymin, ymax)    
+        axarr[i].grid()
+        axarr[i].set_ylabel(feat_names[i])
+    
+    axarr[-1].set_xlabel('Time (s)')
 
 #    plt.tight_layout()
 
@@ -57,23 +43,46 @@ def plot_ipi_xchannel_delay(data, delay_file, time_offset):
     
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="""Plot click IPIs and xchannel delays.""")
-    parser.add_argument("delay_file", help="Delay + IPI file.")
+    parser = argparse.ArgumentParser(description="""Plot click features""")
+    parser.add_argument("click_file", help="Click file with features. The click times must be in col 0.")
+    parser.add_argument("--feat_names", type=str, nargs="+",
+                        required=True, help="Feature names.")
+    parser.add_argument("--feat_col", type=int, nargs="+",
+                        required=True, help="Indices of feature columns.")
+    parser.add_argument("--feat_thres", type=float, nargs="+", default=[],
+                        help="Feature threshold (not used if 0, otherwise clicks" +
+                        " with feature value smaller than the threshold are not displayed.")
+    parser.add_argument("--feat_scale", type=float, nargs="+", default=[],
+                        help="Feature scaling factor.")
     parser.add_argument("--time_offset", type=float, default=0.0, help="Time offset.")
-    parser.add_argument("--min_amp", type=float, default=0.0, help="Min click amplitude.")
 
     args = parser.parse_args()
 
-    delay_file = args.delay_file
+    click_file = args.click_file
+    feat_names = args.feat_names
+    feat_col = args.feat_col
+    feat_thres = args.feat_thres
+    feat_scale = args.feat_scale
     time_offset = args.time_offset
-    min_amp = args.min_amp
+
+
+    if (len(feat_names) != len(feat_col) or
+            feat_thres and len(feat_names) != len(feat_thres) or
+            feat_scale and len(feat_names) != len(feat_scale)):
+        raise Exception("feat_names, feat_cols, feat_thres and feat_scale" +
+                        " must have same length")
 
     # parse file
-    data = np.loadtxt(delay_file, delimiter=',')
-    if min_amp:
-        data = data[data[:,2]>min_amp]
-
-    if data.size == 0:
-        sys.exit("No data")
+    data = np.loadtxt(click_file, delimiter=',')
+    feat_col = [0] + feat_col # col 0 is click time
+    data = data[:,feat_col]
+    for i, t in enumerate(feat_thres):
+        if t != 0:
+            data = data[data[:,i+1]>t]
+    for i, s in enumerate(feat_scale):
+        data[:, i+1] *= s
     
-    plot_ipi_xchannel_delay(data, delay_file, time_offset)
+    if data.size == 0:
+        raise Exception("No data")
+    
+    plot_data(click_file, data, feat_names, feat_thres, time_offset)
