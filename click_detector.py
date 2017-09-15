@@ -173,25 +173,26 @@ def plot(audio,
          ders,
          detections,
          cutoff_freqs,
-         delay):
+         delay,
+         offset):
     
     cutoff_freqs.sort()
 
     # plot stuff
     
     fig = plt.figure()
-    x = np.arange(len(audio)) / sr
+    x = np.arange(len(audio)) / sr + offset
     ax0 = fig.add_subplot(len(bands) + 1, 1, 1)
     ax0.plot(x, audio, 'b')
     ax0.set_title("Full band: Audio signal + final clicks")
     ax1 = ax0.twinx()
-    t = np.asarray([t for t, _ in clicks]) / ENV_SR
+    t = np.asarray([t for t, _ in clicks]) / ENV_SR + offset
     c = np.asarray([v for _, v in clicks])
     ax1.scatter(t, c, marker="x", c="r")
     ax1.set_xlim(left=0)
     ax1.xaxis.grid(True, which='both')
 
-    x_dec = (np.arange(len(ders[0])) + delay) / ENV_SR
+    x_dec = (np.arange(len(ders[0])) + delay) / ENV_SR + offset
 
     for i in range(len(bands)):
 
@@ -200,7 +201,7 @@ def plot(audio,
         ax0.set_title("Band {}-{} Hz: Audio + derivatives + detections".format(cutoff_freqs[-i*2-2], cutoff_freqs[-i*2-1]))
         ax1 = ax0.twinx()
         ax1.plot(x_dec, ders[i], 'r')
-        t = np.asarray([t for t, _ in detections[i]]) / ENV_SR
+        t = np.asarray([t for t, _ in detections[i]]) / ENV_SR + offset
         c = np.asarray([v for _, v in detections[i]])
         ax1.scatter(t, c, marker="x")
         ax1.set_xlim(left=0)
@@ -227,6 +228,7 @@ if __name__ == "__main__":
     parser.add_argument('--cutoff_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="Detection threshold")
     parser.add_argument("--channel", type=int, default=0, help="Audio channel to process")
+    parser.add_argument("--time_range", type=int, nargs="+", default=[], help="Audio channel to process")
     parser.add_argument("--show", type=int, default=0, help="""Plot audio, clicks
             and some more stuff.""")
     args = parser.parse_args()
@@ -238,6 +240,7 @@ if __name__ == "__main__":
     cutoff_freqs = args.cutoff_freqs
     threshold = args.threshold
     channel = args.channel
+    time_range = args.time_range
     show = args.show
 
     # open audio file
@@ -245,6 +248,11 @@ if __name__ == "__main__":
 
     if len(audio.shape) > 1:
         audio = audio[:, channel]
+
+    offset = 0
+    if time_range:
+        offset = time_range[0]
+        audio = audio[int(offset * sr):int(time_range[1] * sr)]
 
     # detect clicks
     clicks, bands, envs, ders, detections, delay = detect_clicks(
@@ -260,7 +268,7 @@ if __name__ == "__main__":
         sha = repo.head.object.hexsha
         f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
         for k, v in clicks:
-            f.write("{:.3f},{:.3f}\n".format(k / float(ENV_SR), v))
+            f.write("{:.3f},{:.3f}\n".format(offset + (k / float(ENV_SR)), v))
     
     if clicks:
 
@@ -274,7 +282,8 @@ if __name__ == "__main__":
                  ders,
                  detections,
                  cutoff_freqs,
-                 delay)
+                 delay,
+                 offset)
 
     else:
         logger.info("No click found.")
