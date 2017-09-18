@@ -26,10 +26,10 @@ def plot_data(click_file, data, feat_names, feat_thres, time_offset):
 
         d = np.asarray([d[i+1] for d in data])
         axarr[i].scatter(t, d, marker="x", c="b")
-        ymin = np.min(data[:,i+1])
-        ymin = ymin - np.abs(ymin) / 10
         ymax = np.max(data[:,i+1])
         ymax = ymax + np.abs(ymax) / 10
+        ymin = np.min(data[:,i+1])
+        ymin = ymin - np.abs(ymax) / 10 # using ymax because ymin is often close to 0
         axarr[i].set_ylim(ymin, ymax)    
         axarr[i].grid()
         axarr[i].set_ylabel(feat_names[i])
