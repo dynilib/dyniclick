@@ -18,6 +18,8 @@ import numpy as np
 from scipy.signal import butter, filtfilt
 import git
 
+import spectral_features
+
 
 CLICK_DURATION = 0.002 # estimated click_duration
 CLIPPING_THRESHOLD = 0.99
@@ -28,6 +30,10 @@ def build_butter_highpass(cut, sr, order=4):
     cut = cut / nyq
     b, a = butter(order, cut, btype='highpass')
     return b, a
+
+
+def next_power_of_two(x):
+    return 1<<(x-1).bit_length()
 
 
 def get_ipi(click, ipi_min, ipi_max, sr, threshold):
@@ -177,5 +183,14 @@ if __name__ == "__main__":
                 max_ind = np.argmax(np.abs(ch1))
                 max_value = min(1, np.abs(ch1[max_ind])) # filtered signal may have values > 1
 
-                f.write("{:.3f},{:.3f},{:.3f},{:.6f},{:.6f},{:.3f}\n".format(
-                    t, v, max_value, tdoa, ipi, salience))
+                # get click chunk
+                click = ch1[int(delay_max*sr):int((delay_max+CLICK_DURATION)*sr)]
+
+                # compute spectral features
+                spec = np.abs(np.fft.rfft(click, n=next_power_of_two(len(click))))
+                freq_bin = sr / 2 / len(spec)
+                spec_centroid = int(spectral_features.centroid(spec) * freq_bin)
+                spec_max = int(np.argmax(spec) * freq_bin)
+
+                f.write("{:.3f},{:.3f},{:.3f},{:.6f},{:.6f},{:.3f},{},{}\n".format(
+                    t, v, max_value, tdoa, ipi, salience, spec_centroid, spec_max))
