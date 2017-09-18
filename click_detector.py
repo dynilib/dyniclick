@@ -9,6 +9,7 @@ Usage: read
 
 import logging
 import argparse
+import textwrap
 import numpy as np
 import copy
 from collections import defaultdict, OrderedDict
@@ -215,10 +216,10 @@ def plot(audio,
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                     description="""Click detector based on onset
-        detection.\nA click is detected if an onset is detected in all the frequency
-        bands.""")
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     description=textwrap.dedent("""
+        Click detector based on onset detection.
+        A click is detected if an onset is detected in all the frequency bands."""))
     parser.add_argument(
         '-v', "--verbose",
         help="Set verbose output", action="store_const", const=logging.DEBUG,

@@ -74,7 +74,7 @@ def get_tdoa(ch1, ch2, delay_max):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
                                      description=textwrap.dedent('''
     Inter Pulse Interval detection and cross-channel delay measure.
     The algorithm is the following:
