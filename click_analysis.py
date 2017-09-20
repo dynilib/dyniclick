@@ -36,40 +36,31 @@ def next_power_of_two(x):
     return 1<<(x-1).bit_length()
 
 
-def get_ipi(click, ipi_min, ipi_max, sr, threshold):
-    """Compute IPI from autocorrelation peak in the IPI range
+def get_ipi(click, chunk_ipi, ipi_min, sr, min_pulse_salience):
+    """Compute IPI from click vs chunk_ipi cross-correlation.
     """
 
-    # Compute autocorrelation of click
-    acorr = np.abs(np.correlate(click, click, "full"))
+    # Compute auto-correlation of click at 0 delay
+    acorr0 = np.abs(np.correlate(click, click, "valid"))[0]
 
-    # Compute ratio between autocorrelation value at 0 delay and
-    # highest value in the [ipi_min,ipi_max] autocorrelation range
+    # Compute cross-correlation between click and chunk_ipi
+    xcorr = np.abs(np.correlate(chunk_ipi, click, "valid"))
+    
+    # Get xcorr peak = ipi candidate
+    ipi_candidate = np.argmax(xcorr)
+    pulse_salience = xcorr[ipi_candidate] / acorr0
 
-    ac_d0 = np.argmax(acorr) # max at 0
-    ac_v0 = acorr[ac_d0]
-
-    ac_win_start = int(ac_d0 + ipi_min * sr)
-    ac_win_end = int(ac_d0 + ipi_max * sr)
-    peak_ind = ac_win_start + np.argmax(acorr[ac_win_start:ac_win_end])
-    peak_value = acorr[peak_ind]
-
-    # If the ratio is greater than a threshold, then we consider it an IPI
-    salience = peak_value / ac_v0
-    if  salience > threshold:
-        return (peak_ind - ac_d0) / float(sr), salience
+    # If pulse_salience is above threshold, ipi_candidate is a pulse
+    if pulse_salience > min_pulse_salience:
+        return (ipi_candidate / sr) + ipi_min, pulse_salience
     else:
         return None, None
 
 
-def get_tdoa(ch1, ch2, delay_max):
+def get_tdoa(click, chunk_tdoa, tdoa_max, sr):
 
-    xcorr = np.abs(np.correlate(ch1, ch2, "same"))
-    delay0 = int(len(xcorr) / 2)
-    delay_max_samples = int(delay_max * sr)
-    delay = (delay_max_samples - np.argmax(xcorr[delay0-delay_max_samples:delay0+delay_max_samples])) / float(sr)
-
-    return delay
+    xcorr = np.abs(np.correlate(chunk_tdoa, click, "valid"))
+    return np.argmax(xcorr) / sr - tdoa_max
 
 
 if __name__ == "__main__":
@@ -96,13 +87,17 @@ if __name__ == "__main__":
     parser.add_argument("audio_file", help="Audio file.")
     parser.add_argument("click_file", help="Click file.")
     parser.add_argument("output_file", help="IPI and delay file.")
+    parser.add_argument("--cutoff_freq", type=int, default=100, help="""Cut-off frequency of the high-pass filter, in Hz.""")
+    parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
+    parser.add_argument("--check_clipping", type=int, default=1, help="Check if the signal is clipping and ignore click if so.")
+    parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
     parser.add_argument("--ipi_min", type=float, default=0.0015, help="Minimum IPI to be detected, in s.")
     parser.add_argument("--ipi_max", type=float, default=0.008, help="Maximum IPI to be detected, in s.")
-    parser.add_argument("--cutoff_freq", type=int, default=100, help="""Cut-off frequency of the high-pass filter, in Hz.""")
-    parser.add_argument("--delay_max", type=float, default=0.0015, help="Maximum cross-channel delay for a click, in s.")
-    parser.add_argument("--min_salience", type=float, default=0.08, help="Min ratio between pulse autocorr value and max autocorr value.")
-    parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
-    parser.add_argument("--check_clipping", type=int, default=1, help="Check if the signal is clipping.")
+    parser.add_argument("--min_pulse_salience", type=float, default=0.08, help="Min pulse salience, measure as the ratio between " +
+                        "click / pulse correlation to click autocorrelation.")
+    parser.add_argument("--filter_by_ipi", type=int, default=1, help="Only keep clicks with pulse (i.e. with ipi != None.")
+    parser.add_argument("--compute_tdoa", type=int, default=1, help="Compute Time Difference Of Arrival (TDOA).")
+    parser.add_argument("--tdoa_max", type=float, default=0.0005, help="Maximum cross-channel delay for a click, in s.") # 0.0005 s -> 0.75 m
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.loglevel)
@@ -110,13 +105,16 @@ if __name__ == "__main__":
     audio_file = args.audio_file
     click_file = args.click_file
     output_file = args.output_file
-    ipi_min = args.ipi_min
-    ipi_max = args.ipi_max
     cutoff_freq = args.cutoff_freq
-    delay_max = args.delay_max
-    min_salience = args.min_salience
     channels = args.channels
     check_clipping = args.check_clipping
+    compute_ipi = args.compute_ipi
+    ipi_max = args.ipi_max
+    ipi_min = args.ipi_min
+    min_pulse_salience = args.min_pulse_salience
+    filter_by_ipi = args.filter_by_ipi
+    compute_tdoa = args.compute_tdoa
+    tdoa_max = args.tdoa_max
 
     #############################
     # open and parse click file #
@@ -140,57 +138,95 @@ if __name__ == "__main__":
 
     with open(output_file, "w") as f:
 
+        # git info
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
         f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
 
+        # params
+        param_names = ["click_time", "click_value"]
+        if compute_ipi:
+            param_names.append("ipi")
+            param_names.append("ipi_salience")
+        if compute_tdoa:
+            param_names.append("tdoa")
+        param_names.append("click_amplitude")
+        param_names.append("spectrum_argmax")
+        param_names.append("spectral_centroid")
+        f.write("#" + ",".join(param_names) + "\n")
+
         if clicks.size == 0:
             sys.exit()
     
-        b, a = build_butter_highpass(cutoff_freq, sr)
+        # check channels
+        n_channels = len(channels)
+        if n_channels < 1 or n_channels > 2:
+            raise ValueError("The number of channels must be 1 or 2")
+        if n_channels > 1:
+            ch1 = channels[0]
+        if n_channels == 2:
+            ch2 = channels[1]
+
+        # check cutoff
+        if cutoff_freq > 0:
+            b, a = build_butter_highpass(cutoff_freq, sr)
+
+        # check ipi related params
+        if not compute_ipi:
+            filter_by_ipi = 0
 
         for t, v in clicks:
+
+            # params
+            param_values = [t, v]
             
-            # Get needed audio chunk around the click
-            win_start_ind = int((t - delay_max) * sr)
-            win_end_ind = int((t + delay_max + ipi_max + CLICK_DURATION)* sr)
-
-            # If the chunk clips during more than CLICK_DURATION,
-            # the click is removed.
-            if (check_clipping and
-                    (np.abs(audio[win_start_ind:win_end_ind, channels[0]]) > CLIPPING_THRESHOLD).sum() > CLICK_DURATION * sr):
+            # Get needed audio chunks around the click: 
+            # - the click itself
+            click = audio[int(t*sr):int((t+CLICK_DURATION)*sr), ch1]
+            if cutoff_freq > 0:
+                click = filtfilt(b, a, click)
+            # - the chunk where the pulse is expected, on the same channel
+            #   (used to compute the IPI)
+            if compute_ipi:
+                chunk_ipi =  audio[int((t+ipi_min)*sr):int((t+CLICK_DURATION+ipi_max)*sr), ch1]
+                if cutoff_freq > 0:
+                    chunk_ipi = filtfilt(b, a, chunk_ipi)
+            # - the chunk on the second channel to measure the TDOA
+            if compute_tdoa and n_channels == 2:
+                chunk_tdoa = audio[int((t-tdoa_max)*sr):int((t+tdoa_max+CLICK_DURATION)*sr), ch2]
+                if cutoff_freq > 0:
+                    chunk_tdoa = filtfilt(b, a, chunk_tdoa)
+            
+            # If the click clips during more than CLICK_DURATION, ignore it.
+            if (np.abs(click) > CLIPPING_THRESHOLD).sum() > CLIPPING_THRESHOLD * sr:
                 continue
+            
+            # Estimate IPI
+            if compute_ipi:
+                ipi, ipi_salience = get_ipi(
+                    click,
+                    chunk_ipi,
+                    ipi_min,
+                    sr,
+                    min_pulse_salience)
+                param_values += [ipi, ipi_salience]
 
+            if not filter_by_ipi or ipi:
 
-            # Highpass filter
-            ch1 = filtfilt(b, a, audio[win_start_ind:win_end_ind, channels[0]])
-            ch2 = filtfilt(b, a, audio[win_start_ind:win_end_ind, channels[1]])
+                # Estimate TDOA
+                if compute_tdoa:
+                    tdoa = get_tdoa(click, chunk_tdoa, tdoa_max, sr)
+                    param_values += [tdoa]
 
-            # Get IPI on ch1
-            ipi, salience = get_ipi(
-                ch1[int(delay_max*sr):int((delay_max+ipi_max+CLICK_DURATION)*sr)],
-                ipi_min,
-                ipi_max,
-                sr,
-                min_salience)
-
-            if ipi:
-
-                # compute cross-channel delay from xcorrelation peak
-                tdoa = get_tdoa(ch1, ch2, delay_max)
-
-                # get max signal value
-                max_ind = np.argmax(np.abs(ch1))
-                max_value = min(1, np.abs(ch1[max_ind])) # filtered signal may have values > 1
-
-                # get click chunk
-                click = ch1[int(delay_max*sr):int((delay_max+CLICK_DURATION)*sr)]
+                # Get click amplitude
+                click_amp = min(1, np.abs(max(click))) # filtered signal may have values > 1
+                param_values += [click_amp]
 
                 # compute spectral features
                 spec = np.abs(np.fft.rfft(click, n=next_power_of_two(len(click))))
                 freq_bin = sr / 2 / len(spec)
+                spec_argmax = int(np.argmax(spec) * freq_bin)
                 spec_centroid = int(spectral_features.centroid(spec) * freq_bin)
-                spec_max = int(np.argmax(spec) * freq_bin)
+                param_values += [spec_argmax, spec_centroid]
 
-                f.write("{:.3f},{:.3f},{:.3f},{:.6f},{:.6f},{:.3f},{},{}\n".format(
-                    t, v, max_value, tdoa, ipi, salience, spec_centroid, spec_max))
+                f.write(",".join([str(p) for p in param_values]) + "\n")
