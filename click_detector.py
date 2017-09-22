@@ -19,43 +19,62 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 import git
 
+from click_analysis import CLICK_DURATION
+
 
 logger = logging.getLogger(__name__)
 
 
 ENV_SR = 1000 # envelope sample rate, in Hz
-HALF_HANN_DURATION = 0.05 # in s
-DEFAULT_THRESHOLD = 0.2 # detection threshold on the log-envelope derivative
-DEFAULT_MIN_TIME_BETWEEN_CLICKS = 0.01 # in s
+HALF_HANN_DURATION = 0.01 # in s
+THRESHOLD = 0.2 # detection threshold on the log-envelope derivative
+MIN_TIME_BETWEEN_CLICKS = 0.01 # in s. The value is supposed to be longer than largest possible IPI.
 
 
 def build_half_hann(sr, half_hann_duration=0.05):
-    
     half_hann_size = int(half_hann_duration * sr)
     half_hann = np.hanning(half_hann_size * 2 + 1)[half_hann_size:]
     return half_hann / np.sum(half_hann)
 
 
-def get_envelope(x, sr, win, env_sr=1000):
+def get_envelope(x, sr, win, env_sr=1000, log=False):
 
-    # full-wave rectification
+    # Full-wave rectification
     x = np.abs(x)
 
-    # filter signal and decimate
-    # use fftconvolve, faster than lfilter for large number of coef
+    # Filter signal and decimate.
+    # Use fftconvolve, faster than lfilter for large number of coef.
     decimation_ratio = int(sr / env_sr)
-    return fftconvolve(x, win, 'same')[::decimation_ratio]
+    env = fftconvolve(x, win, 'same')[::decimation_ratio]
+
+    if log:
+        env = np.log(env.clip(min=np.finfo(env.dtype).eps))
+
+    return env
 
 
-def time_clean(clicks, min_size_between_clicks):
-    "Remove detected values if a higher one is found within min_size_between_clicks"
+def get_peaks(data, threshold=0):
+    """Returns peak indices and values above threshold."""
+    return [(i, data[i]) for i in np.where(data[1:-1]>threshold)[0]+1 if data[i] > data[i-1] and data[i] > data[i+1]]
+
+
+def detection2maxamp(audio, start, end, sr):
+    """Returns argmax max around detection."""
+    start_ind = int(max(0, start * sr))
+    end_ind = int(min(len(audio), end * sr))
+    ind = np.argmax(np.abs(audio[start_ind:end_ind])) + start_ind
+    return ind / sr, np.abs(audio[ind])
+
+
+def time_integration(clicks, min_time_between_clicks):    
+    """Removes detected values if a higher one is found within min_time_between_clicks."""
     prev_i = 0
     prev_t = clicks[0][0]
     prev_v = clicks[0][1]
     to_remove = set()
     for i, (t, v) in enumerate(clicks[1:]):
         i += 1
-        if t - prev_t < min_size_between_clicks:
+        if t - prev_t < min_time_between_clicks:
             if v > prev_v:
                 to_remove.add(prev_i)
                 prev_i = i
@@ -68,24 +87,28 @@ def time_clean(clicks, min_size_between_clicks):
             prev_t = t
             prev_v = v
 
-    return [clicks[i] for i in range(len(clicks)) if i not in to_remove]
+    return np.delete(clicks, list(to_remove), axis=0)
 
 
-def frequency_clean(clicks, detections, min_size_between_clicks):
-
+def frequency_integration(clicks, detections, min_time_between_clicks):
+    """Returns only clicks found in all detection bands.
+    Set click value to sum of detection value."""
     to_remove = set()
     for i, (t0, _) in enumerate(clicks):
+        sum_v = 0
         for d in detections[1:]:
-            found = False
-            for t, _ in d:
-                if np.abs(t0 - t) < min_size_between_clicks:
-                    found = True
-                    break
-            if not found:
+            found = np.where(np.abs(t0 - [t for t, _ in d]) < min_time_between_clicks)[0]
+            if found.size:
+                best_match = np.argmin(np.abs(t0 - [d[j][0] for j in found]))
+                sum_v += d[found[best_match]][1]
+            else:
+                sum_v = 0
                 to_remove.add(i)
                 break
+        if sum_v:
+            clicks[i][1] = sum_v
 
-    return [clicks[i] for i in range(len(clicks)) if i not in to_remove]
+    return np.delete(clicks, list(to_remove), axis=0)
 
 
 def detect_clicks(
@@ -95,14 +118,14 @@ def detect_clicks(
         threshold,
         keep_data=False):
 
-    # arrange cutoff freqs
+    # Sort cutoff freqs
     if len(cutoff_freqs) % 2 != 0:
         raise Exception("The number of cutoff frequencies must be even.")
     cutoff_freqs.sort()
 
     nyq = sr / 2.0
 
-    # process
+    # Process
     bands = []
     envs = []
     ders = []
@@ -110,57 +133,64 @@ def detect_clicks(
 
     for i, freqs in enumerate(list(zip(cutoff_freqs[::2], cutoff_freqs[1::2]))[::-1]):
 
-        # build bandpass filter
+        # Build bandpass filter
         b, a = butter(3, [freqs[0] / nyq, freqs[1] / nyq], btype='bandpass')
 
-        # filter signal
-        # use filtfilt for 0 phase delay
-        # then order is doubled
+        # Filter signal
+        # Use filtfilt for 0 phase delay
         if keep_data:
             bands.append(filtfilt(b, a, audio))
         else:
             band = filtfilt(b, a, audio)
 
-        # compute log envelope
+        # Compute log envelope
         half_hann = build_half_hann(sr, half_hann_duration=HALF_HANN_DURATION)
-        delay = int(((len(half_hann) - 1) / 2) / sr * ENV_SR)
+        delay = (len(half_hann) - 1) / 2 / sr # filter delay
         if keep_data:
-            envs.append(np.log(get_envelope(bands[-1], sr, half_hann, env_sr=ENV_SR).clip(min=np.finfo(bands[-1].dtype).eps)))
+            envs.append(get_envelope(bands[-1], sr, half_hann, env_sr=ENV_SR, log=True))
         else:
-            env = np.log(get_envelope(band, sr, half_hann, env_sr=ENV_SR).clip(min=np.finfo(band.dtype).eps))
+            env = get_envelope(band, sr, half_hann, env_sr=ENV_SR, log=True)
 
-        # compute derivative
+        # Compute derivative (detection function)
         if keep_data:
             ders.append(np.diff(envs[-1]))
         else:
             der = np.diff(env)
 
-        # get peak values above the threshold
-        d = []
+        # Get detections above the threshold
         if keep_data:
-            for i in np.where(ders[-1][1:-1]>threshold)[0]:
-                i += 1 # we start at index 1 in the where condition
-                if ders[-1][i] > ders[-1][i-1] and ders[-1][i] > ders[-1][i+1]:
-                    d.append((i + delay, ders[-1][i]))
+            d = get_peaks(ders[-1], threshold=threshold)
         else:
-            for i in np.where(der[1:-1]>threshold)[0]:
-                i += 1 # we start at index 1 in the where condition
-                if der[i] > der[i-1] and der[i] > der[i+1]:
-                    d.append((i + delay, der[i]))
-        detections.append(d)
+            d = get_peaks(der, threshold=threshold)
 
+        # Convert detection indices to times and compensate for delay
+        # introduced by half-hanning filter
+        d = [(ind / ENV_SR + delay, v) for ind, v in d]
+
+        # Refine click time by picking the max amplitude around the detection
+        # and keep this amplitude.
+        # Chunk (a bit arbitrarily) taken between (detection - click duration) and
+        # (detection + click duration)
+        d = [detection2maxamp(
+            bands[-1] if keep_data else band,
+            t - CLICK_DURATION,
+            t + CLICK_DURATION,
+            sr) for t, _ in d]
+        
+        detections.append(d)
 
     # take the highest frequency band as the reference
     clicks = copy.deepcopy(detections[0])
 
     if clicks:
-        # keep the highest values in a DEFAULT_MIN_TIME_BETWEEN_CLICKS window
-        clicks = time_clean(clicks, DEFAULT_MIN_TIME_BETWEEN_CLICKS * ENV_SR)
+
+        # keep the highest values in a MIN_TIME_BETWEEN_CLICKS window
+        clicks = time_integration(clicks, MIN_TIME_BETWEEN_CLICKS)
 
         # frequency integration: keep only clicks detected in all bands,
-        # between -DEFAULT_MIN_TIME_BETWEEN_CLICKS/2 and +DEFAULT_MIN_TIME_BETWEEN_CLICKS/2
+        # between -CLICK_DURATION and +CLICK_DURATION
         # of the reference click
-        clicks = frequency_clean(clicks, detections, DEFAULT_MIN_TIME_BETWEEN_CLICKS * ENV_SR / 2)
+        clicks = frequency_integration(clicks, detections, CLICK_DURATION)
 
     return clicks, bands, envs, ders, detections, delay
 
@@ -180,36 +210,34 @@ def plot(audio,
     cutoff_freqs.sort()
 
     # plot stuff
-    
-    fig = plt.figure()
+    f, axarr = plt.subplots((len(bands)+1), sharex=True)
     x = np.arange(len(audio)) / sr + offset
-    ax0 = fig.add_subplot(len(bands) + 1, 1, 1)
-    ax0.plot(x, audio, 'b')
-    ax0.set_title("Full band: Audio signal + final clicks")
-    ax1 = ax0.twinx()
-    t = np.asarray([t for t, _ in clicks]) / ENV_SR + offset
+    #axarr[0] = fig.add_subplot(len(bands) + 1, 1, 1)
+    axarr[0].plot(x, audio, 'b')
+    axarr[0].set_title("Full band: Audio signal + final clicks")
+    axarr[0].xaxis.grid()
+    axarr_ = axarr[0].twinx()
+    t = np.asarray([t for t, _ in clicks]) + offset
     c = np.asarray([v for _, v in clicks])
-    ax1.scatter(t, c, marker="x", c="r")
-    ax1.set_xlim(left=0)
-    ax1.xaxis.grid(True, which='both')
+    axarr_.scatter(t, c, marker="x", c="r")
+    axarr_.vlines(t, 0, c, colors="r")
+    axarr_.set_xlim(left=offset)
+    axarr_.yaxis.grid()
 
-    x_dec = (np.arange(len(ders[0])) + delay) / ENV_SR + offset
+    x_dec = np.arange(len(ders[0])) / ENV_SR + delay + offset
 
     for i in range(len(bands)):
 
-        ax0 = fig.add_subplot(len(bands)+1, 1, i+2)
-        ax0.plot(x, bands[i], 'g')
-        ax0.set_title("Band {}-{} Hz: Audio + derivatives + detections".format(cutoff_freqs[-i*2-2], cutoff_freqs[-i*2-1]))
-        ax1 = ax0.twinx()
-        ax1.plot(x_dec, ders[i], 'r')
-        t = np.asarray([t for t, _ in detections[i]]) / ENV_SR + offset
+        axarr[1+i].plot(x, bands[i], 'g')
+        axarr[1+i].set_title("Band {}-{} Hz: Audio + derivatives + detections".format(cutoff_freqs[-i*2-2], cutoff_freqs[-i*2-1]))
+        axarr[1+i].xaxis.grid()
+        axarr_ = axarr[1+i].twinx()
+        axarr_.plot(x_dec, ders[i], 'r')
+        axarr_.yaxis.grid()
+        t = np.asarray([t for t, _ in detections[i]]) + offset
         c = np.asarray([v for _, v in detections[i]])
-        ax1.scatter(t, c, marker="x")
-        ax1.set_xlim(left=0)
-
-    plt.grid()
-
-    plt.tight_layout()
+        axarr[1+i].scatter(t, c, marker="x")
+        axarr[1+i].set_xlim(left=offset)
 
     plt.show()
 
@@ -227,7 +255,7 @@ if __name__ == "__main__":
     parser.add_argument("input", help="Audio file.")
     parser.add_argument("output", help="Output csv file with detections.")
     parser.add_argument('--cutoff_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
-    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="Detection threshold")
+    parser.add_argument("--threshold", type=float, default=THRESHOLD, help="Detection threshold")
     parser.add_argument("--channel", type=int, default=0, help="Audio channel to process")
     parser.add_argument("--time_range", type=int, nargs="+", default=[], help="Audio channel to process")
     parser.add_argument("--show", type=int, default=0, help="""Plot audio, clicks
@@ -268,10 +296,10 @@ if __name__ == "__main__":
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
         f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
-        for k, v in clicks:
-            f.write("{:.3f},{:.3f}\n".format(offset + (k / float(ENV_SR)), v))
+        for t, v in clicks:
+            f.write("{:.3f},{:.3f}\n".format(offset + t, v))
     
-    if clicks:
+    if clicks.size:
 
         if show:
             plot(audio,
