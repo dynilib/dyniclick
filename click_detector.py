@@ -114,14 +114,14 @@ def frequency_integration(clicks, detections, min_time_between_clicks):
 def detect_clicks(
         audio,
         sr,
-        cutoff_freqs,
+        bandpass_freqs,
         threshold,
         keep_data=False):
 
     # Sort cutoff freqs
-    if len(cutoff_freqs) % 2 != 0:
+    if len(bandpass_freqs) % 2 != 0:
         raise Exception("The number of cutoff frequencies must be even.")
-    cutoff_freqs.sort()
+    bandpass_freqs.sort()
 
     nyq = sr / 2.0
 
@@ -131,7 +131,7 @@ def detect_clicks(
     ders = []
     detections = []
 
-    for i, freqs in enumerate(list(zip(cutoff_freqs[::2], cutoff_freqs[1::2]))[::-1]):
+    for i, freqs in enumerate(list(zip(bandpass_freqs[::2], bandpass_freqs[1::2]))[::-1]):
 
         # Build bandpass filter
         b, a = butter(3, [freqs[0] / nyq, freqs[1] / nyq], btype='bandpass')
@@ -202,7 +202,7 @@ def detect_clicks(
                 t - CLICK_DURATION/2,
                 t + CLICK_DURATION/2,
                 sr)
-            clicks[i] = (max(0, new_t - CLICK_DURATION*0.1), v)
+            clicks[i] = (max(0, new_t - CLICK_DURATION*0.1), min(1, v)) # min(1, v) because filtered signal may have values > 1
 
     return clicks, bands, envs, ders, detections, delay
 
@@ -215,11 +215,11 @@ def plot(audio,
          envs,
          ders,
          detections,
-         cutoff_freqs,
+         bandpass_freqs,
          delay,
          offset):
     
-    cutoff_freqs.sort()
+    bandpass_freqs.sort()
 
     # plot stuff
     f, axarr = plt.subplots((len(bands)+1), sharex=True)
@@ -241,7 +241,7 @@ def plot(audio,
     for i in range(len(bands)):
 
         axarr[1+i].plot(x, bands[i], 'g')
-        axarr[1+i].set_title("Band {}-{} Hz: Audio + derivatives + detections".format(cutoff_freqs[-i*2-2], cutoff_freqs[-i*2-1]))
+        axarr[1+i].set_title("Band {}-{} Hz: Audio + derivatives + detections".format(bandpass_freqs[-i*2-2], bandpass_freqs[-i*2-1]))
         axarr[1+i].xaxis.grid()
         axarr_ = axarr[1+i].twinx()
         axarr_.plot(x_dec, ders[i], 'r')
@@ -266,7 +266,8 @@ if __name__ == "__main__":
         dest="loglevel", default=logging.INFO)
     parser.add_argument("input", help="Audio file.")
     parser.add_argument("output", help="Output csv file with detections.")
-    parser.add_argument('--cutoff_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
+    parser.add_argument('--bandpass_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
+    parser.add_argument('--highpass_freq', type=int, default=1000, help='Cutoff frequency of the high pass filter.')
     parser.add_argument("--threshold", type=float, default=THRESHOLD, help="Detection threshold")
     parser.add_argument("--channel", type=int, default=0, help="Audio channel to process")
     parser.add_argument("--time_range", type=int, nargs="+", default=[], help="Audio channel to process")
@@ -278,7 +279,8 @@ if __name__ == "__main__":
 
     input = args.input
     output = args.output
-    cutoff_freqs = args.cutoff_freqs
+    bandpass_freqs = args.bandpass_freqs
+    highpass_freq = args.highpass_freq
     threshold = args.threshold
     channel = args.channel
     time_range = args.time_range
@@ -290,6 +292,11 @@ if __name__ == "__main__":
     if len(audio.shape) > 1:
         audio = audio[:, channel]
 
+    # highpass filter
+    nyq = sr / 2.0
+    b, a = butter(4, highpass_freq / nyq, btype='highpass')
+    audio = filtfilt(b, a, audio)
+
     offset = 0
     if time_range:
         offset = time_range[0]
@@ -299,7 +306,7 @@ if __name__ == "__main__":
     clicks, bands, envs, ders, detections, delay = detect_clicks(
         audio,
         sr,
-        cutoff_freqs,
+        bandpass_freqs,
         threshold,
         keep_data=show)
 
@@ -322,7 +329,7 @@ if __name__ == "__main__":
                  envs,
                  ders,
                  detections,
-                 cutoff_freqs,
+                 bandpass_freqs,
                  delay,
                  offset)
 
