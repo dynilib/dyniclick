@@ -87,7 +87,7 @@ if __name__ == "__main__":
     parser.add_argument("audio_file", help="Audio file.")
     parser.add_argument("click_file", help="Click file.")
     parser.add_argument("output_file", help="IPI and delay file.")
-    parser.add_argument("--cutoff_freq", type=int, default=100, help="""Cut-off frequency of the high-pass filter, in Hz.""")
+    parser.add_argument("--cutoff_freq", type=int, default=1000, help="""Cut-off frequency of the high-pass filter, in Hz.""")
     parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
     parser.add_argument("--check_clipping", type=int, default=1, help="Check if the signal is clipping and ignore click if so.")
     parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
