@@ -34,7 +34,7 @@ def draw_click(x, y, click_w, click_h, im_w):
     c0 = min(max(0, x - click_w/2), im_w - click_w)
     return draw_rectangle(r0, c0, click_w, click_h)
 
-def process(video_file, click_file, output_file, max_tdoa, offset, min_amp, max_amp, decay):
+def process(video_file, click_file, output_file, max_tdoa, cols, offset, min_amp, max_amp, decay):
 
     # open video file
     reader = imageio.get_reader(video_file)
@@ -45,8 +45,7 @@ def process(video_file, click_file, output_file, max_tdoa, offset, min_amp, max_
     writer = imageio.get_writer(TMP_FILE, fps=fps)
 
     # open and parse click_file
-    # t, v, max_value, delay, ipi, salience
-    clicks = np.loadtxt(click_file, delimiter=',', usecols=(0,2,3))
+    clicks = np.loadtxt(click_file, delimiter=',', usecols=cols)
     clicks = np.atleast_2d(clicks)
 
     # only keep rows with amp > min_amp
@@ -111,6 +110,7 @@ if __name__ == "__main__":
     parser.add_argument("click_file", help="click file.")
     parser.add_argument("output_file", help="Output video file.")
     parser.add_argument("max_tdoa", type=float, help="Max Time Difference Of Arrival.")
+    parser.add_argument("--cols", type=int, nargs="+", help="Indices of columns <time>, <amplitude>, <tdoa>")
     parser.add_argument("--offset", type=float, default=0, help="Click offset.")
     parser.add_argument("--min_amp", type=float, default=0.5, help="Min click amplitude.")
     parser.add_argument("--max_amp", type=float, default=1, help="Max click amplitude.")
@@ -122,9 +122,10 @@ if __name__ == "__main__":
     click_file = args.click_file
     output_file = args.output_file
     max_tdoa = args.max_tdoa
+    cols = args.cols
     offset = args.offset
-    max_amp = args.max_amp
     min_amp = args.min_amp
+    max_amp = args.max_amp
     decay = args.decay
 
-    process(video_file, click_file, output_file, max_tdoa, offset, min_amp, max_amp, decay)
+    process(video_file, click_file, output_file, max_tdoa, cols, offset, min_amp, max_amp, decay)
