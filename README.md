@@ -27,7 +27,7 @@ $ source activate click_detector
 Click detection:
 
 ```sh
-python click_detector.py someaudiofile.wav someaudiofile.clicks --cutoff_freqs 10000 20000 20000 30000 --threshold 0.5 --channel 0 --show 1
+python click_detector.py someaudiofile.wav someaudiofile.clicks --bandpass_freqs 10000 20000 20000 30000 --threshold 0.5 --channel 0 --show 1
 ```
 
 Click IPIs and cross-channel delay:
