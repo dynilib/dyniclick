@@ -169,12 +169,12 @@ def detect_clicks(
 
         # Refine click time by picking the max amplitude around the detection
         # and keep this amplitude.
-        # Chunk (a bit arbitrarily) taken between (detection - click duration) and
-        # (detection + click duration)
+        # Chunk (a bit arbitrarily) taken between (detection - click duration/2) and
+        # (detection + click duration/2)
         d = [detection2maxamp(
             bands[-1] if keep_data else band,
-            t - CLICK_DURATION,
-            t + CLICK_DURATION,
+            t - CLICK_DURATION/2,
+            t + CLICK_DURATION/2,
             sr) for t, _ in d]
         
         detections.append(d)
@@ -191,6 +191,18 @@ def detect_clicks(
         # between -CLICK_DURATION and +CLICK_DURATION
         # of the reference click
         clicks = frequency_integration(clicks, detections, CLICK_DURATION)
+
+        # now set click time as the argmax of the raw audio
+        # in [t-CLICK_DURATION/2:t+CLICK_DURATION/2] minus CLICK_DURATION * 0.1,
+        # and click value as the max
+        for i in range(len(clicks)):
+            t = clicks[i][0]
+            new_t, v = detection2maxamp(
+                audio,
+                t - CLICK_DURATION/2,
+                t + CLICK_DURATION/2,
+                sr)
+            clicks[i] = (max(0, new_t - CLICK_DURATION*0.1), v)
 
     return clicks, bands, envs, ders, detections, delay
 

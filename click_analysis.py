@@ -150,7 +150,6 @@ if __name__ == "__main__":
             param_names.append("ipi_salience")
         if compute_tdoa:
             param_names.append("tdoa")
-        param_names.append("click_amplitude")
         param_names.append("spectrum_argmax")
         param_names.append("spectral_centroid")
         f.write("#" + ",".join(param_names) + "\n")
@@ -217,10 +216,6 @@ if __name__ == "__main__":
                 if compute_tdoa:
                     tdoa = get_tdoa(click, chunk_tdoa, tdoa_max, sr)
                     param_values += [tdoa]
-
-                # Get click amplitude
-                click_amp = min(1, np.abs(max(click))) # filtered signal may have values > 1
-                param_values += [click_amp]
 
                 # compute spectral features
                 spec = np.abs(np.fft.rfft(click, n=next_power_of_two(len(click))))
