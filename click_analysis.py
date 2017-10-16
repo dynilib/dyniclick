@@ -87,7 +87,7 @@ if __name__ == "__main__":
     parser.add_argument("audio_file", help="Audio file.")
     parser.add_argument("click_file", help="Click file.")
     parser.add_argument("output_file", help="IPI and delay file.")
-    parser.add_argument("--cutoff_freq", type=int, default=1000, help="""Cut-off frequency of the high-pass filter, in Hz.""")
+    parser.add_argument("--highpass_freq", type=int, default=1000, help="""Cut-off frequency of the high-pass filter, in Hz.""")
     parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
     parser.add_argument("--check_clipping", type=int, default=1, help="Check if the signal is clipping and ignore click if so.")
     parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     audio_file = args.audio_file
     click_file = args.click_file
     output_file = args.output_file
-    cutoff_freq = args.cutoff_freq
+    highpass_freq = args.highpass_freq
     channels = args.channels
     check_clipping = args.check_clipping
     compute_ipi = args.compute_ipi
@@ -167,8 +167,8 @@ if __name__ == "__main__":
             ch2 = channels[1]
 
         # check cutoff
-        if cutoff_freq > 0:
-            b, a = build_butter_highpass(cutoff_freq, sr)
+        if highpass_freq > 0:
+            b, a = build_butter_highpass(highpass_freq, sr)
 
         # check ipi related params
         if not compute_ipi:
@@ -182,18 +182,18 @@ if __name__ == "__main__":
             # Get needed audio chunks around the click: 
             # - the click itself
             click = audio[int(t*sr):int((t+CLICK_DURATION)*sr), ch1]
-            if cutoff_freq > 0:
+            if highpass_freq > 0:
                 click = filtfilt(b, a, click)
             # - the chunk where the pulse is expected, on the same channel
             #   (used to compute the IPI)
             if compute_ipi:
                 chunk_ipi =  audio[int((t+ipi_min)*sr):int((t+CLICK_DURATION+ipi_max)*sr), ch1]
-                if cutoff_freq > 0:
+                if highpass_freq > 0:
                     chunk_ipi = filtfilt(b, a, chunk_ipi)
             # - the chunk on the second channel to measure the TDOA
             if compute_tdoa and n_channels == 2:
                 chunk_tdoa = audio[int((t-tdoa_max)*sr):int((t+tdoa_max+CLICK_DURATION)*sr), ch2]
-                if cutoff_freq > 0:
+                if highpass_freq > 0:
                     chunk_tdoa = filtfilt(b, a, chunk_tdoa)
             
             # If the click clips during more than CLICK_DURATION, ignore it.
