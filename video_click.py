@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("video_file", help="Video file.")
     parser.add_argument("click_file", help="click file.")
     parser.add_argument("output_file", help="Output video file.")
-    parser.add_argument("max_tdoa", type=float, help="Max Time Difference Of Arrival.")
+    parser.add_argument("--max_tdoa", type=float, help="Max Time Difference Of Arrival.")
     parser.add_argument("--cols", type=int, nargs="+", help="Indices of columns <time>, <amplitude>, <tdoa>")
     parser.add_argument("--offset", type=float, default=0, help="Click offset.")
     parser.add_argument("--min_amp", type=float, default=0.5, help="Min click amplitude.")
