@@ -24,26 +24,32 @@ First, activate the environnement:
 $ source activate click_detector
 ```
 
+To get help on any script:
+
+```sh
+python myscript.py -h
+```
+
 Click detection:
 
 ```sh
-python click_detector.py someaudiofile.wav someaudiofile.clicks --bandpass_freqs 10000 20000 20000 30000 --threshold 0.5 --channel 0 --show 1
+python click_detector.py somefile.wav somefile.clicks --bandpass_freqs 10000 20000 20000 30000 --threshold 0.5 --channel 0 --highpass_freq 10000
 ```
 
-Click IPIs and cross-channel delay:
+Click analysis:
 
 ```sh
-python ipi_xchanneldelay_extractor.py someaudiofile.wav someaudiofile.clicks someaudiofile.delays --cutoff_freq 10000 --ipi_min 0.0015 --ipi_max 0.008 --delay_max 0.0015 --channels 0 1
+python click_analysis.py somefile.wav somefile.clicks somefile.feat --highpass_freq 10000 --ipi_min 0.0015 --ipi_max 0.008 --delay_max 0.00065 --channels 0 1
 ```
 
-Plot IPIs and cross-channel delays:
+Plot click features:
 
 ```sh
-python plot_utils.py someaudiofile.delays
+python plot_utils.py somefile.feat --feat_col 1 2 4 5 6 --feat_name 'Click amp' 'IPI (ms)' 'TDAO (ms)' $'Spectrum\nargmax (kHz)' $'Spectral\ncentroid\n(kHz)' --feat_scale 1 1000 1000 0.001 0.001 --feat_thres 0.1 0 0 0 0
 ```
 
 Add click visualization on top of a video
 
 ```sh
-python video_click.py somevideo.mp4 someaudiofile.delays output.mp4 <max tdoa> --offset <offset>
+python video_click.py somefile.mp4 somefile.feat output.mp4 --max_tdoa 0.00065 --cols 0 1 3
 ```
