@@ -47,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("click_file", help="Click file with features. The click times must be in col 0.")
     parser.add_argument("--feat_names", type=str, nargs="+",
                         required=True, help="Feature names.")
-    parser.add_argument("--feat_col", type=int, nargs="+",
+    parser.add_argument("--feat_cols", type=int, nargs="+",
                         required=True, help="Indices of feature columns.")
     parser.add_argument("--feat_thres", type=float, nargs="+", default=[],
                         help="Feature threshold (not used if 0, otherwise clicks" +
@@ -60,13 +60,13 @@ if __name__ == "__main__":
 
     click_file = args.click_file
     feat_names = args.feat_names
-    feat_col = args.feat_col
+    feat_cols = args.feat_cols
     feat_thres = args.feat_thres
     feat_scale = args.feat_scale
     time_offset = args.time_offset
 
 
-    if (len(feat_names) != len(feat_col) or
+    if (len(feat_names) != len(feat_cols) or
             feat_thres and len(feat_names) != len(feat_thres) or
             feat_scale and len(feat_names) != len(feat_scale)):
         raise Exception("feat_names, feat_cols, feat_thres and feat_scale" +
@@ -74,8 +74,8 @@ if __name__ == "__main__":
 
     # parse file
     data = np.loadtxt(click_file, delimiter=',')
-    feat_col = [0] + feat_col # col 0 is click time
-    data = data[:,feat_col]
+    feat_cols = [0] + feat_cols # col 0 is click time
+    data = data[:,feat_cols]
     for i, t in enumerate(feat_thres):
         if t != 0:
             data = data[data[:,i+1]>t]
