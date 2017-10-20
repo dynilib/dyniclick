@@ -3,7 +3,7 @@
 Inter Pulse Interval and x-channel delay measure.
 
 Usage: read
-    $ ./ipi_xchanneldelay_extractor.py --h
+    $ ./click_analysis.py --h
 """
 
 import os
