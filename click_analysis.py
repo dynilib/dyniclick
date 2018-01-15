@@ -21,6 +21,9 @@ import git
 import spectral_features
 
 
+path = os.path.dirname(os.path.abspath(__file__))
+
+
 CLICK_DURATION = 0.002 # estimated click_duration
 CLIPPING_THRESHOLD = 0.99
 
@@ -139,7 +142,7 @@ if __name__ == "__main__":
     with open(output_file, "w") as f:
 
         # git info
-        repo = git.Repo(search_parent_directories=True)
+        repo = git.Repo(path, search_parent_directories=True)
         sha = repo.head.object.hexsha
         f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
 
