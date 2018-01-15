@@ -17,7 +17,7 @@ import numpy as np
 import git
 
 
-def track_clicks(clicks, click_interval_max, diff_max):
+def track_clicks(clicks, click_interval_max, diff_max, polynomial_expectation=False):
 
     tracks = []
 
@@ -34,15 +34,18 @@ def track_clicks(clicks, click_interval_max, diff_max):
 
             if c[0] - clicks[track[-1]][0] < click_interval_max:
 
-                # fit polynomial on last 3 points
-                deg = min(len(track)-1, 2) # max degree is 2
-                last = track[-3:]
-                x = [clicks[k][0] for k in last]
-                y = [clicks[k][1] for k in last]
-                p = np.polyfit(x, y, deg)
+                if polynomial_expectation:
+                    # fit 2nd order polynomial on last 3 points
+                    deg = min(len(track)-1, 2) # max degree is 2
+                    last = track[-3:]
+                    x = [clicks[k][0] for k in last]
+                    y = [clicks[k][1] for k in last]
+                    p = np.polyfit(x, y, deg)
+                    # compute polynomial value at current click time
+                    expected_tdoa = np.polyval(p, c[0])
 
-                # compute polynomial value at current click time
-                expected_tdoa = np.polyval(p, c[0])
+                else:
+                    expected_tdoa = clicks[track[-1]][1]
 
                 diff  = np.abs(expected_tdoa - c[1])
                 if diff < diff_min and diff < diff_max:
