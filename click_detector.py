@@ -7,6 +7,7 @@ Usage: read
 """
 
 
+import os
 import logging
 import argparse
 import textwrap
@@ -23,7 +24,7 @@ from click_analysis import CLICK_DURATION
 
 
 logger = logging.getLogger(__name__)
-
+path = os.path.dirname(os.path.abspath(__file__))
 
 ENV_SR = 1000 # envelope sample rate, in Hz
 HALF_HANN_DURATION = 0.01 # in s
@@ -312,7 +313,7 @@ if __name__ == "__main__":
 
     # write file
     with open(output, "w") as f:
-        repo = git.Repo(search_parent_directories=True)
+        repo = git.Repo(path, search_parent_directories=True)
         sha = repo.head.object.hexsha
         f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
         for t, v in clicks:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Plot click IPI and xchannel delays.
+Plot click features.
 
 Usage: read 
     $ ./plot_utils.py --h
