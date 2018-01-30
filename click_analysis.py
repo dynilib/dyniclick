@@ -26,6 +26,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 CLICK_DURATION = 0.002 # estimated click_duration
 CLIPPING_THRESHOLD = 0.99
+MAX_CLIPPING_RATIO = 0.01
 
 
 def build_butter_highpass(cut, sr, order=4):
@@ -183,8 +184,12 @@ if __name__ == "__main__":
             param_values = [t, v]
             
             # Get needed audio chunks around the click: 
-            # - the click itself
+            # - the click itself. If it clips during more than CLICK_DURATION * MAX_CLIPPING_RATIO s, ignore it.
             click = audio[int(t*sr):int((t+CLICK_DURATION)*sr), ch1]
+            if (check_clipping and 
+                    (np.abs(click) > CLIPPING_THRESHOLD).sum() > CLICK_DURATION * MAX_CLIPPING_RATIO * sr):
+                continue
+            
             if highpass_freq > 0:
                 click = filtfilt(b, a, click)
             # - the chunk where the pulse is expected, on the same channel
@@ -198,10 +203,6 @@ if __name__ == "__main__":
                 chunk_tdoa = audio[int((t-tdoa_max)*sr):int((t+tdoa_max+CLICK_DURATION)*sr), ch2]
                 if highpass_freq > 0:
                     chunk_tdoa = filtfilt(b, a, chunk_tdoa)
-            
-            # If the click clips during more than CLICK_DURATION, ignore it.
-            if (np.abs(click) > CLIPPING_THRESHOLD).sum() > CLIPPING_THRESHOLD * sr:
-                continue
             
             # Estimate IPI
             if compute_ipi:
