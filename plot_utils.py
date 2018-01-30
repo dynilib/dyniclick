@@ -24,7 +24,7 @@ def plot_data(click_file, data, feat_names, feat_thres, time_offset, track_file)
     colorlist = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     colors = [colorlist[int(d%(len(colorlist)-1))] for d in data[:,-1]] if track_file else 'b'
     
-    t = np.asarray([d[0] for d in data])
+    t = np.asarray([d[0] for d in data]) + time_offset
 
     for i in range(len(feat_names)):
 
