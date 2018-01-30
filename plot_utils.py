@@ -16,9 +16,8 @@ import matplotlib.pyplot as plt
 def plot_data(click_file, data, feat_names, feat_thres, time_offset, track_file):
     
     f, axarr = plt.subplots(len(feat_names), sharex=True)
-
-    title = click_file if time_offset == 0.0 else "{}\ntime offset: {}".format(click_file, time_offset)
-    axarr[0].set_title(title)
+    
+    axarr[0].set_title(click_file)
 
 
     # map track_ind to color if tracks are set
@@ -39,7 +38,7 @@ def plot_data(click_file, data, feat_names, feat_thres, time_offset, track_file)
         axarr[i].grid()
         axarr[i].set_ylabel(feat_names[i])
     
-    axarr[-1].set_xlabel('Time (s)')
+    axarr[-1].set_xlabel('Time (s){}'.format('' if time_offset==0 else ", time offset: " + str(time_offset)))
 
 #    plt.tight_layout()
 
