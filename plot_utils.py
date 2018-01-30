@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_data(click_file, data, feat_names, feat_thres, time_offset, track_file):
+def plot_data(click_file, data, feat_names, time_offset, track_file):
     
     f, axarr = plt.subplots(len(feat_names), sharex=True)
     
@@ -97,4 +97,4 @@ if __name__ == "__main__":
     if data.size == 0:
         raise Exception("No data")
     
-    plot_data(click_file, data, feat_names, feat_thres, time_offset, track_file)
+    plot_data(click_file, data, feat_names, time_offset, track_file)
