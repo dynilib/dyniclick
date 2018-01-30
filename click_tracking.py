@@ -17,14 +17,20 @@ import numpy as np
 import git
 
 
+NO_TRACK_ID = -1
+
+
 path = os.path.dirname(os.path.abspath(__file__))
 
 
-def track_clicks(clicks, click_interval_max, diff_max, polynomial_expectation=False):
+def track_clicks(clicks, amp_thres, click_interval_max, diff_max, polynomial_expectation=False):
 
     tracks = []
 
     for i, c in enumerate(clicks):
+
+        if c[1] < amp_thres:
+            continue
 
         if i == 0:
             tracks.append([i])
@@ -42,15 +48,15 @@ def track_clicks(clicks, click_interval_max, diff_max, polynomial_expectation=Fa
                     deg = min(len(track)-1, 2) # max degree is 2
                     last = track[-3:]
                     x = [clicks[k][0] for k in last]
-                    y = [clicks[k][1] for k in last]
+                    y = [clicks[k][2] for k in last]
                     p = np.polyfit(x, y, deg)
                     # compute polynomial value at current click time
                     expected_tdoa = np.polyval(p, c[0])
 
                 else:
-                    expected_tdoa = clicks[track[-1]][1]
+                    expected_tdoa = clicks[track[-1]][2]
 
-                diff  = np.abs(expected_tdoa - c[1])
+                diff  = np.abs(expected_tdoa - c[2])
                 if diff < diff_min and diff < diff_max:
                     diff_min = diff
                     track_ind = j
@@ -73,9 +79,10 @@ if __name__ == "__main__":
         '-v', "--verbose",
         help="Set verbose output", action="store_const", const=logging.DEBUG,
         dest="loglevel", default=logging.INFO)
-    parser.add_argument("click_file", help="Click file, with tdoa.")
+    parser.add_argument("click_file", help="Click file, with click time in col 0, click amplitude in col 1 and tdoa in col tdoa_col.")
     parser.add_argument("output_file", help="Same as input, with an additional column specifying a track id, if a track is found.")
     parser.add_argument("--tdoa_col", type=int, help="Index of the tdoa column.")
+    parser.add_argument("--amp_thres", type=float, default=0.1, help="Click amplitude threshold.")
     parser.add_argument("--click_interval_max", type=float, default=0.1, help="Maximum interval between clicks before ending a track.")
     parser.add_argument("--diff_max", type=float, default=2e-5, help="Maximum difference between expection and actual value to assign a click to a track .")
     args = parser.parse_args()
@@ -85,17 +92,22 @@ if __name__ == "__main__":
     click_file = args.click_file
     output_file = args.output_file
     tdoa_col = args.tdoa_col
+    amp_thres = args.amp_thres
     click_interval_max = args.click_interval_max
     diff_max = args.diff_max
 
-    clicks = np.loadtxt(click_file, delimiter=",", usecols=[0,tdoa_col])
+    clicks = np.loadtxt(click_file, delimiter=",", usecols=[0,1,tdoa_col])
 
-    tracks = track_clicks(clicks, click_interval_max, diff_max)
+    tracks = track_clicks(clicks, amp_thres, click_interval_max, diff_max)
 
     # get track ind per click
     track_ind = []
     for i in range(clicks.shape[0]):
-        track_ind.append(next(j for j, sublist in enumerate(tracks) if i in sublist))
+        try:
+            ind = next(j for j, sublist in enumerate(tracks) if i in sublist)
+        except StopIteration:
+            ind = NO_TRACK_ID
+        track_ind.append(ind)
 
     with open(output_file, "w") as f:
 
