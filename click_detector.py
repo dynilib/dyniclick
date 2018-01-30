@@ -252,6 +252,7 @@ def plot(audio,
         axarr[1+i].scatter(t, c, marker="x")
         axarr[1+i].set_xlim(left=offset)
 
+    axarr[-1].set_xlabel("Time (s)")
     plt.show()
 
 
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     parser.add_argument('--highpass_freq', type=int, default=1000, help='Cutoff frequency of the high pass filter.')
     parser.add_argument("--threshold", type=float, default=THRESHOLD, help="Detection threshold")
     parser.add_argument("--channel", type=int, default=0, help="Audio channel to process")
-    parser.add_argument("--time_range", type=int, nargs="+", default=[], help="Time range to process")
+    parser.add_argument("--time_range", type=float, nargs="+", default=[], help="Time range to process")
     parser.add_argument("--show", type=int, default=0, help="""Plot audio, clicks
             and some more stuff.""")
     args = parser.parse_args()
