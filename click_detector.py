@@ -252,6 +252,7 @@ def plot(audio,
         axarr[1+i].scatter(t, c, marker="x")
         axarr[1+i].set_xlim(left=offset)
 
+    axarr[-1].set_xlabel("Time (s)")
     plt.show()
 
 
