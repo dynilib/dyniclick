@@ -66,6 +66,9 @@ def track_clicks(clicks, amp_thres, click_interval_max, diff_max, polynomial_exp
         else:
             tracks.append([i])
 
+    # keep only multiple clicks tracks
+    tracks =  [t for t in tracks if len(t) > 1]
+
     return tracks
 
 
