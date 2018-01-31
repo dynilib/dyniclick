@@ -21,8 +21,8 @@ def plot_data(click_file, data, feat_names, time_offset, track_file):
 
 
     # map track_ind to color if tracks are set
-    colorlist = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
-    colors = [colorlist[int(d%(len(colorlist)-1))] for d in data[:,-1]] if track_file else 'b'
+    colorlist = ['g', 'r', 'c', 'm', 'y', 'b', 'w']
+    colors = ['k' if d == -1 else colorlist[int(d%(len(colorlist)-1))] for d in data[:,-1]] if track_file else 'k'
     
     t = np.asarray([d[0] for d in data]) + time_offset
 
