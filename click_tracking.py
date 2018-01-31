@@ -99,7 +99,7 @@ if __name__ == "__main__":
     click_interval_max = args.click_interval_max
     diff_max = args.diff_max
 
-    clicks = np.loadtxt(click_file, delimiter=",", usecols=[0,1,tdoa_col])
+    clicks = np.loadtxt(click_file, delimiter=",", usecols=[0,1,tdoa_col], ndmin=2)
 
     tracks = track_clicks(clicks, amp_thres, click_interval_max, diff_max)
 

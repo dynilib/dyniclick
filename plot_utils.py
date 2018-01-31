@@ -79,7 +79,7 @@ if __name__ == "__main__":
                         " must have same length")
 
     # parse file
-    data = np.loadtxt(click_file, delimiter=',')
+    data = np.loadtxt(click_file, delimiter=',', ndmin=2)
     feat_cols = [0] + feat_cols # col 0 is click time
     data = data[:,feat_cols]
 
