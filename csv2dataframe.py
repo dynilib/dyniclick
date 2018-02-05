@@ -136,5 +136,5 @@ if __name__ == "__main__":
     df = process(feat_root, output, feat_names, feat_file_ext, track_root, track_file_ext)
 
     store = pd.HDFStore(output, complib='zlib', complevel=5)
-    store['data'] = df
+    store['clicks'] = df
     store.close()
