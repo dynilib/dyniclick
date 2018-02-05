@@ -61,7 +61,7 @@ def add_to_date(date, toadd):
     return d + datetime.timedelta(seconds=t)
 
 
-def process(root_dir, output, feat_names, feat_file_ext="DEFAULT_FEAT_FILE_EXT"):
+def process(root_dir, output, feat_names, feat_file_ext=DEFAULT_FEAT_FILE_EXT):
 
     df = pd.DataFrame()
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument("root_dir", help="Feature file root.")
     parser.add_argument("output", help="Output file.")
     parser.add_argument('--feat_names', type=str, nargs='+', help='Feature names.')
-    parser.add_argument("--feat_file_ext", type=str, default="DEFAULT_FEAT_FILE_EXT", help="Feature file extension.")
+    parser.add_argument("--feat_file_ext", type=str, default=DEFAULT_FEAT_FILE_EXT, help="Feature file extension.")
     args = parser.parse_args()
 
     root_dir = args.root_dir
