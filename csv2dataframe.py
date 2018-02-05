@@ -11,6 +11,7 @@ import argparse
 import logging
 import datetime
 import pandas as pd
+import numpy as np
 
 import git
 
@@ -21,6 +22,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 
 DEFAULT_FEAT_FILE_EXT = "feat"
+DEFAULT_TRACK_FILE_EXT = "tracks"
 
 DATE_REGEX = [
     r'(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})UTC',
@@ -61,11 +63,16 @@ def add_to_date(date, toadd):
     return d + datetime.timedelta(seconds=t)
 
 
-def process(root_dir, output, feat_names, feat_file_ext=DEFAULT_FEAT_FILE_EXT):
+def process(feat_root, output, feat_names,
+            feat_file_ext=DEFAULT_FEAT_FILE_EXT,
+            track_root='', track_file_ext=DEFAULT_TRACK_FILE_EXT):
 
-    df = pd.DataFrame()
+    df_feat = pd.DataFrame()
+    df_file = pd.DataFrame()
 
-    for root, _, filenames in os.walk(root_dir):
+    last_track_id = 0
+
+    for root, _, filenames in os.walk(feat_root):
         for filename in filenames:
             if filename.endswith(feat_file_ext):
                 try:
@@ -76,6 +83,9 @@ def process(root_dir, output, feat_names, feat_file_ext=DEFAULT_FEAT_FILE_EXT):
                         continue
 
                     df_i = pd.read_csv(os.path.join(root, filename), names=feat_names, comment="#")
+                    if df_i.empty:
+                        logging.debug("{} empty".format(filename))
+                        continue
 
                     # Add click time to date.
                     # Click time must be in second and 
@@ -84,34 +94,46 @@ def process(root_dir, output, feat_names, feat_file_ext=DEFAULT_FEAT_FILE_EXT):
                         lambda t: date + datetime.timedelta(seconds=float(t))
                     )
 
-                    df = df.append(df_i)
+                    # Add track
+                    if track_root:
+                        track_ids = np.loadtxt(os.path.join(root, filename.replace(feat_file_ext, track_file_ext)), ndmin=1, dtype=np.int32)
+                        max_track_id = max(track_ids)
+                        track_ids[track_ids>-1] += last_track_id
+                        df_i['track_id'] = track_ids
+                        last_track_id += max_track_id + 1 if max_track_id != -1 else 0 # track_id starts from 0 in every file, so we must increment
+
+                    df_feat = df_feat.append(df_i)
 
                 except Exception as e:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
                     traceback.print_exception(exc_type, exc_value, exc_traceback,
                                               limit=2, file=sys.stdout)
 
-    if not df.empty:
-        df = df.set_index(df.columns[0]).sort_index()
+    if not df_feat.empty:
+        df_feat = df_feat.set_index(df_feat.columns[0]).sort_index()
 
-    return df
+    return df_feat
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Concatenate click feature files into a compressed Pandas\' DataFrame..')
-    parser.add_argument("root_dir", help="Feature file root.")
+    parser.add_argument("feat_root", help="Feature files root.")
     parser.add_argument("output", help="Output file.")
     parser.add_argument('--feat_names', type=str, nargs='+', help='Feature names.')
     parser.add_argument("--feat_file_ext", type=str, default=DEFAULT_FEAT_FILE_EXT, help="Feature file extension.")
+    parser.add_argument("--track_root", type=str, default='', help=" Track files root.")
+    parser.add_argument("--track_file_ext", type=str, default=DEFAULT_TRACK_FILE_EXT, help="Track file extension.")
     args = parser.parse_args()
 
-    root_dir = args.root_dir
+    feat_root = args.feat_root
     output = args.output
     feat_names = args.feat_names
     feat_file_ext = args.feat_file_ext
+    track_root = args.track_root
+    track_file_ext = args.track_file_ext
 
-    df = process(root_dir, output, feat_names, feat_file_ext)
+    df = process(feat_root, output, feat_names, feat_file_ext, track_root, track_file_ext)
 
     store = pd.HDFStore(output, complib='zlib', complevel=5)
     store['data'] = df
