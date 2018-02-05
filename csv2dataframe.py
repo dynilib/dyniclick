@@ -82,7 +82,7 @@ def process(feat_root, output, feat_names,
                         logging.warning("Wrong date format: {}".format(filename))
                         continue
 
-                    df_i = pd.read_csv(os.path.join(root, filename), names=feat_names, comment="#")
+                    df_i = pd.read_csv(os.path.join(root, filename), names=feat_names, comment="#", dtype=np.float32)
                     if df_i.empty:
                         logging.debug("{} empty".format(filename))
                         continue
