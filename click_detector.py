@@ -12,6 +12,7 @@ import logging
 import argparse
 import textwrap
 import numpy as np
+import pandas as pd
 import copy
 from collections import defaultdict, OrderedDict
 
@@ -312,13 +313,18 @@ if __name__ == "__main__":
         threshold,
         keep_data=show)
 
-    # write file
-    with open(output, "w") as f:
-        repo = git.Repo(path, search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
-        for t, v in clicks:
-            f.write("{:.3f},{:.3f}\n".format(offset + t, v))
+    # store in DataFrame and save as hdf file
+    store = pd.HDFStore(output)
+    store['clicks'] = pd.DataFrame(clicks, columns=['time', 'amp'])
+    store['clicks'] += offset
+    config = vars(args)
+    config['file'] = __file__
+    repo = git.Repo(path, search_parent_directories=True)
+    config['commit'] = repo.head.object.hexsha
+    config['duration'] = len(audio) / sr
+    config = {k:str(v) for k,v in config.items()}
+    store['config/detection'] = pd.DataFrame(config, index=[0])
+    store.close()
     
     if clicks.size:
 
