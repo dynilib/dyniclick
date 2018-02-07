@@ -13,6 +13,43 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def plot_click_feat(data, min_amp=0.1):
+
+    data = data.loc[data['click_amp']>min_amp]
+
+    feat_names = [c for c in data.columns[:-1]]
+    
+    f, axarr = plt.subplots(len(feat_names), sharex=True)
+    
+    axarr[0].set_title("Clicks")
+
+    # map track_ind to color
+    # track_id is last columns
+    colorlist = ['g', 'r', 'c', 'm', 'y', 'b', 'w']
+    colors = ['k' if d == -1 else colorlist[int(d%(len(colorlist)-1))] for d in data['track_id'].tolist()]
+    
+    t = data.index.to_pydatetime()
+
+    for i, feat_name in enumerate(feat_names):
+
+        d = data[feat_name].tolist()
+        axarr[i].scatter(t, d, marker="x", c=colors)
+        ymax = np.max(d)
+        ymax = ymax + np.abs(ymax) / 10
+        ymin = np.min(d)
+        ymin = ymin - np.abs(ymax) / 10 # using ymax because ymin is often close to 0
+        axarr[i].set_ylim(ymin, ymax)    
+        axarr[i].grid()
+        axarr[i].set_ylabel(feat_name)
+        axarr[i].set_xlim(t[0], t[-1])    
+    
+    axarr[-1].set_xlabel('Time (s)')
+
+#    plt.tight_layout()
+
+    plt.show()
+
+
 def plot_data(click_file, data, feat_names, time_offset, track_file):
     
     f, axarr = plt.subplots(len(feat_names), sharex=True)
