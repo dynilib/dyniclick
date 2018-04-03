@@ -6,7 +6,6 @@ Usage: read
     $ ./click_detector.py --h
 """
 
-
 import os
 import logging
 import argparse
@@ -31,6 +30,8 @@ ENV_SR = 1000 # envelope sample rate, in Hz
 HALF_HANN_DURATION = 0.01 # in s
 THRESHOLD = 0.2 # detection threshold on the log-envelope derivative
 MIN_TIME_BETWEEN_CLICKS = 0.01 # in s. The value is supposed to be longer than largest possible IPI.
+CLIPPING_THRESHOLD = 0.999
+CLIPPING_WINDOW = 0.05 # duration of the window in which clipping is checked around a click, in s
 
 
 def build_half_hann(sr, half_hann_duration=0.05):
@@ -291,9 +292,13 @@ if __name__ == "__main__":
 
     # open audio file
     audio, sr = sf.read(input, dtype="float32")
+    duration = len(audio) / sr
 
     if len(audio.shape) > 1:
         audio = audio[:, channel]
+    
+    # compute clipping mask
+    clipping_mask = np.abs(audio) > CLIPPING_THRESHOLD
 
     # highpass filter
     nyq = sr / 2.0
@@ -312,6 +317,17 @@ if __name__ == "__main__":
         bandpass_freqs,
         threshold,
         keep_data=show)
+    
+    # remove clicks when the signal has one clipping value
+    # in a CLIPPING_WINDOW long window centered on the click time
+    num_clicks = len(clicks)
+    clicks = [c for c in clicks if not np.any(
+        clipping_mask[
+            max(0, int((c[0] - CLIPPING_WINDOW/2) * sr)):
+            int((c[0] + CLIPPING_WINDOW/2) * sr)
+        ]
+    )]
+
 
     # store in DataFrame and save as hdf file
     store = pd.HDFStore(output)
@@ -321,8 +337,9 @@ if __name__ == "__main__":
     config['file'] = __file__
     repo = git.Repo(path, search_parent_directories=True)
     config['commit'] = repo.head.object.hexsha
-    config['duration'] = len(audio) / sr
+    config['duration'] = duration
     config = {k:str(v) for k,v in config.items()}
+    config['num_clicks_before_clipping_detection'] = num_clicks
     store['config/detection'] = pd.DataFrame(config, index=[0])
     store.close()
     

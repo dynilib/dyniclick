@@ -25,8 +25,6 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 
 CLICK_DURATION = 0.002 # estimated click_duration
-CLIPPING_THRESHOLD = 0.99
-MAX_CLIPPING_RATIO = 0.01
 
 
 def build_butter_highpass(cut, sr, order=4):
@@ -93,7 +91,6 @@ if __name__ == "__main__":
     parser.add_argument("output_file", help="IPI and delay file.")
     parser.add_argument("--highpass_freq", type=int, default=1000, help="""Cut-off frequency of the high-pass filter, in Hz.""")
     parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
-    parser.add_argument("--check_clipping", type=int, default=1, help="Check if the signal is clipping and ignore click if so.")
     parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
     parser.add_argument("--ipi_min", type=float, default=0.0015, help="Minimum IPI to be detected, in s.")
     parser.add_argument("--ipi_max", type=float, default=0.008, help="Maximum IPI to be detected, in s.")
@@ -111,7 +108,6 @@ if __name__ == "__main__":
     output_file = args.output_file
     highpass_freq = args.highpass_freq
     channels = args.channels
-    check_clipping = args.check_clipping
     compute_ipi = args.compute_ipi
     ipi_max = args.ipi_max
     ipi_min = args.ipi_min
@@ -184,11 +180,8 @@ if __name__ == "__main__":
             param_values = [t, v]
             
             # Get needed audio chunks around the click: 
-            # - the click itself. If it clips during more than CLICK_DURATION * MAX_CLIPPING_RATIO s, ignore it.
+            # - the click itself.
             click = audio[int(t*sr):int((t+CLICK_DURATION)*sr), ch1]
-            if (check_clipping and 
-                    (np.abs(click) > CLIPPING_THRESHOLD).sum() > CLICK_DURATION * MAX_CLIPPING_RATIO * sr):
-                continue
             
             if highpass_freq > 0:
                 click = filtfilt(b, a, click)
