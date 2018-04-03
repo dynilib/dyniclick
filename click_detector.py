@@ -339,7 +339,7 @@ if __name__ == "__main__":
     d['num_clicks_before_clipping_detection'] = num_clicks
     pickle.dump(d, open(output, 'wb'))
     
-    if clicks.size:
+    if len(clicks) > 0:
 
         if show:
             plot(audio,
