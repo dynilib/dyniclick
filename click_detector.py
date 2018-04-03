@@ -11,9 +11,9 @@ import logging
 import argparse
 import textwrap
 import numpy as np
-import pandas as pd
 import copy
 from collections import defaultdict, OrderedDict
+import pickle
 
 from scipy.signal import butter, filtfilt, fftconvolve
 import matplotlib.pyplot as plt
@@ -328,20 +328,16 @@ if __name__ == "__main__":
         ]
     )]
 
-
-    # store in DataFrame and save as hdf file
-    store = pd.HDFStore(output)
-    store['clicks'] = pd.DataFrame(clicks, columns=['time', 'amp'])
-    store['clicks'] += offset
-    config = vars(args)
-    config['file'] = __file__
+    # store in dict and save as pickle file
+    d = dict()
+    d['clicks'] = clicks
+    d['config'] = vars(args)
+    d['file'] = __file__
     repo = git.Repo(path, search_parent_directories=True)
-    config['commit'] = repo.head.object.hexsha
-    config['duration'] = duration
-    config = {k:str(v) for k,v in config.items()}
-    config['num_clicks_before_clipping_detection'] = num_clicks
-    store['config/detection'] = pd.DataFrame(config, index=[0])
-    store.close()
+    d['commit'] = repo.head.object.hexsha
+    d['duration'] = duration
+    d['num_clicks_before_clipping_detection'] = num_clicks
+    pickle.dump(d, open(output, 'wb'))
     
     if clicks.size:
 
