@@ -26,11 +26,12 @@ DEFAULT_TRACK_FILE_EXT = "tracks"
 
 DATE_REGEX = [
     r'(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})UTC',
-    r'.*(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})UTC'
+    r'.*(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})UTC',
+    r'.*(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_UTC'
 ]
 
 
-def parse_date_sarano(basename):
+def parse_date(basename):
     
     for regex in DATE_REGEX:
         match = re.match(regex, basename)
