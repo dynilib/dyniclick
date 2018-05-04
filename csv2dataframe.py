@@ -27,7 +27,8 @@ DEFAULT_TRACK_FILE_EXT = "tracks"
 DATE_REGEX = [
     r'(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})UTC',
     r'.*(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})UTC',
-    r'.*(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_UTC'
+    r'.*(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_UTC',
+    r'(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})_B'
 ]
 
 
@@ -77,7 +78,7 @@ def process(feat_root, output, feat_names,
         for filename in filenames:
             if filename.endswith(feat_file_ext):
                 try:
-                    date = parse_date_sarano(filename)
+                    date = parse_date(filename)
 
                     if not date:
                         logging.warning("Wrong date format: {}".format(filename))
