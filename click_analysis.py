@@ -16,6 +16,7 @@ import textwrap
 import soundfile as sf
 import numpy as np
 from scipy.signal import butter, filtfilt
+import pickle
 import git
 
 import spectral_features
@@ -82,8 +83,8 @@ def process(
     # open and parse click file #
     #############################
 
-    clicks = np.loadtxt(click_file, delimiter=',')
-    clicks = np.atleast_2d(clicks)
+    data = pickle.load(open(click_file, 'rb'))
+    clicks = np.atleast_2d(data['clicks'])
 
     ###################   
     # open audio file #
