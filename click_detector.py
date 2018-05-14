@@ -20,14 +20,13 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 import git
 
-from click_analysis import CLICK_DURATION
-
 
 logger = logging.getLogger(__name__)
 path = os.path.dirname(os.path.abspath(__file__))
 
 
 # default parameters
+CLICK_DURATION = 0.002 # estimated click_duration
 HALF_HANN_DURATION = 0.01 # duration of the half-hann window used to smooth the signal, in s
 ENV_SR = 1000 # envelope sample rate, in Hz
 THRESHOLD = 0.2 # detection threshold on the log-envelope derivative

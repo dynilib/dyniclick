@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """        
-Inter Pulse Interval and x-channel delay measure.
+Estimates cross-channel delay and Inter Pulse Interval.
 
 Usage: read
     $ ./click_analysis.py --h
@@ -19,12 +19,10 @@ from scipy.signal import butter, filtfilt
 import git
 
 import spectral_features
+from click_detector import CLICK_DURATION
 
 
 path = os.path.dirname(os.path.abspath(__file__))
-
-
-CLICK_DURATION = 0.002 # estimated click_duration
 
 
 def build_butter_highpass(cut, sr, order=4):
