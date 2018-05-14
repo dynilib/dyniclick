@@ -259,8 +259,8 @@ def plot(audio,
     plt.show()
 
     
-def process(input,
-            output,
+def process(filename_in,
+            filename_out,
             bandpass_freqs=[10000, 15000, 15000, 20000],
             highpass_freq=1000,
             threshold=THRESHOLD,
@@ -269,7 +269,7 @@ def process(input,
             show=False):
 
     # open audio file
-    audio, sr = sf.read(input, dtype="float32")
+    audio, sr = sf.read(filename_in, dtype="float32")
     duration = len(audio) / sr
 
     if len(audio.shape) > 1:
@@ -311,8 +311,8 @@ def process(input,
     d = dict()
     d['clicks'] = clicks
     d['config'] = {
-        "input": input,
-        "output": output,
+        "filename_in": filename_in,
+        "filename_out": filename_out,
         "bandpass_freqs": bandpass_freqs,
         "highpass_freq": highpass_freq,
         "threshold": threshold,
@@ -324,7 +324,7 @@ def process(input,
     d['commit'] = repo.head.object.hexsha
     d['duration'] = duration
     d['num_clipped_clicks_removed'] = num_clipped_clicks_removed
-    pickle.dump(d, open(output, 'wb'))
+    pickle.dump(d, open(filename_out, 'wb'))
     
     if len(clicks) > 0:
 
@@ -357,8 +357,8 @@ if __name__ == "__main__":
         '-v', "--verbose",
         help="Set verbose output", action="store_const", const=logging.DEBUG,
         dest="loglevel", default=logging.INFO)
-    parser.add_argument("input", help="Audio file.")
-    parser.add_argument("output", help="Output csv file with detections.")
+    parser.add_argument("filename_in", help="Audio file.")
+    parser.add_argument("filename_out", help="Output csv file with detections.")
     parser.add_argument('--bandpass_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
     parser.add_argument('--highpass_freq', type=int, default=1000, help='Cutoff frequency of the high pass filter.')
     parser.add_argument("--threshold", type=float, default=THRESHOLD, help="Detection threshold")
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     
     logging.getLogger().setLevel(args.loglevel)
 
-    process(args.input, args.output,
+    process(args.filename_in, args.filename_out,
             bandpass_freqs=args.bandpass_freqs,
             highpass_freq=args.highpass_freq,
             threshold=args.threshold,
