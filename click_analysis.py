@@ -20,7 +20,7 @@ import pickle
 import git
 
 import spectral_features
-from click_detector import CLICK_DURATION
+from click_detector import CLICK_DURATION, CLIPPING_THRESHOLD
 
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -161,7 +161,8 @@ def process(
             # - the chunk on the second channel to measure the TDOA
             if tdoa_max > 0 and n_channels == 2:
                 chunk_tdoa = audio[int((t-tdoa_max)*sr):int((t+tdoa_max+CLICK_DURATION)*sr), ch2]
-                if highpass_freq > 0:
+                is_ch2_clipping = np.any(np.abs(chunk_tdoa)>CLIPPING_THRESHOLD)
+                if highpass_freq > 0 and not is_ch2_clipping:
                     chunk_tdoa = filtfilt(b, a, chunk_tdoa)
             
             # Estimate IPI
@@ -178,7 +179,7 @@ def process(
 
                 # Estimate TDOA
                 if tdoa_max > 0:
-                    tdoa = get_tdoa(click, chunk_tdoa, tdoa_max, sr)
+                    tdoa = np.NAN if is_ch2_clipping else get_tdoa(click, chunk_tdoa, tdoa_max, sr) 
                     param_values += [tdoa]
 
                 # compute spectral features
