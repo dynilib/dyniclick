@@ -63,56 +63,20 @@ def get_tdoa(click, chunk_tdoa, tdoa_max, sr):
     return np.argmax(xcorr) / sr - tdoa_max
 
 
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
-                                     description=textwrap.dedent('''
-    Inter Pulse Interval detection and cross-channel delay measure.
-    The algorithm is the following:
-    For every click in the click file, in a window (default 0.01s) around the click: 
-        - If check_clipping is set to True, check that the signal is not clipping
-        - Filter both channels with highpass filter (default cutoff frequency = 10000 Hz).
-        - In channel 1, check if the autocorrelation of the click has a peak in the [ipi_min, ipi_max]
-          range (in second) with amplitude higher than a threshold
-        - If yes compute the cross-correlation between channels 1 and 2. The position of the peak gives the delay between both channels.
-
-    The format of each line in the output file is:
-    
-    <click time>, <click confidence>, <click amplitude>, <xcorr delay>, <acorr ipi delay>, <acorr value at 0 delay>, <acorr value at ipi delay>
-    '''))
-    parser.add_argument(
-        '-v', "--verbose",
-        help="Set verbose output", action="store_const", const=logging.DEBUG,
-        dest="loglevel", default=logging.INFO)
-    parser.add_argument("audio_file", help="Audio file.")
-    parser.add_argument("click_file", help="Click file.")
-    parser.add_argument("output_file", help="IPI and delay file.")
-    parser.add_argument("--highpass_freq", type=int, default=1000, help="""Cut-off frequency of the high-pass filter, in Hz.""")
-    parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
-    parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
-    parser.add_argument("--ipi_min", type=float, default=0.0015, help="Minimum IPI to be detected, in s.")
-    parser.add_argument("--ipi_max", type=float, default=0.008, help="Maximum IPI to be detected, in s.")
-    parser.add_argument("--min_pulse_salience", type=float, default=0.08, help="Min pulse salience, measure as the ratio between " +
-                        "click / pulse correlation to click autocorrelation.")
-    parser.add_argument("--filter_by_ipi", type=int, default=1, help="Only keep clicks with pulse (i.e. with ipi != None.")
-    parser.add_argument("--compute_tdoa", type=int, default=1, help="Compute Time Difference Of Arrival (TDOA).")
-    parser.add_argument("--tdoa_max", type=float, default=0.0005, help="Maximum cross-channel delay for a click, in s.") # 0.0005 s -> 0.75 m
-    args = parser.parse_args()
-
-    logging.getLogger().setLevel(args.loglevel)
-
-    audio_file = args.audio_file
-    click_file = args.click_file
-    output_file = args.output_file
-    highpass_freq = args.highpass_freq
-    channels = args.channels
-    compute_ipi = args.compute_ipi
-    ipi_max = args.ipi_max
-    ipi_min = args.ipi_min
-    min_pulse_salience = args.min_pulse_salience
-    filter_by_ipi = args.filter_by_ipi
-    compute_tdoa = args.compute_tdoa
-    tdoa_max = args.tdoa_max
+def process(
+        audio_file,
+        click_file,
+        output_file,
+        highpass_freq,
+        channels,
+        compute_ipi,
+        ipi_max,
+        ipi_min,
+        min_pulse_salience,
+        filter_by_ipi,
+        compute_tdoa,
+        tdoa_max
+):
 
     #############################
     # open and parse click file #
@@ -220,3 +184,57 @@ if __name__ == "__main__":
                 param_values += [spec_argmax, spec_centroid]
 
                 f.write(",".join([str(p) for p in param_values]) + "\n")
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     description=textwrap.dedent('''
+    Inter Pulse Interval detection and cross-channel delay measure.
+    The algorithm is the following:
+    For every click in the click file, in a window (default 0.01s) around the click: 
+        - If check_clipping is set to True, check that the signal is not clipping
+        - Filter both channels with highpass filter (default cutoff frequency = 10000 Hz).
+        - In channel 1, check if the autocorrelation of the click has a peak in the [ipi_min, ipi_max]
+          range (in second) with amplitude higher than a threshold
+        - If yes compute the cross-correlation between channels 1 and 2. The position of the peak gives the delay between both channels.
+
+    The format of each line in the output file is:
+    
+    <click time>, <click confidence>, <click amplitude>, <xcorr delay>, <acorr ipi delay>, <acorr value at 0 delay>, <acorr value at ipi delay>
+    '''))
+    parser.add_argument(
+        '-v', "--verbose",
+        help="Set verbose output", action="store_const", const=logging.DEBUG,
+        dest="loglevel", default=logging.INFO)
+    parser.add_argument("audio_file", help="Audio file.")
+    parser.add_argument("click_file", help="Click file.")
+    parser.add_argument("output_file", help="IPI and delay file.")
+    parser.add_argument("--highpass_freq", type=int, default=1000, help="""Cut-off frequency of the high-pass filter, in Hz.""")
+    parser.add_argument("--channels", type=int, nargs="+", default=[0, 1], help="""Respectively channels 1 and 2 in the algorithm.""")
+    parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
+    parser.add_argument("--ipi_min", type=float, default=0.0015, help="Minimum IPI to be detected, in s.")
+    parser.add_argument("--ipi_max", type=float, default=0.008, help="Maximum IPI to be detected, in s.")
+    parser.add_argument("--min_pulse_salience", type=float, default=0.08, help="Min pulse salience, measure as the ratio between " +
+                        "click / pulse correlation to click autocorrelation.")
+    parser.add_argument("--filter_by_ipi", type=int, default=1, help="Only keep clicks with pulse (i.e. with ipi != None.")
+    parser.add_argument("--compute_tdoa", type=int, default=1, help="Compute Time Difference Of Arrival (TDOA).")
+    parser.add_argument("--tdoa_max", type=float, default=0.0005, help="Maximum cross-channel delay for a click, in s.") # 0.0005 s -> 0.75 m
+    args = parser.parse_args()
+
+    logging.getLogger().setLevel(args.loglevel)
+
+    process(
+        args.audio_file,
+        args.click_file,
+        args.output_file,
+        args.highpass_freq,
+        args.channels,
+        args.compute_ipi,
+        args.ipi_max,
+        args.ipi_min,
+        args.min_pulse_salience,
+        args.filter_by_ipi,
+        args.compute_tdoa,
+        args.tdoa_max
+    )
+
