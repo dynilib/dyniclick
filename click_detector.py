@@ -26,6 +26,7 @@ from click_analysis import CLICK_DURATION
 logger = logging.getLogger(__name__)
 path = os.path.dirname(os.path.abspath(__file__))
 
+
 ENV_SR = 1000 # envelope sample rate, in Hz
 HALF_HANN_DURATION = 0.01 # in s
 THRESHOLD = 0.2 # detection threshold on the log-envelope derivative
@@ -257,38 +258,15 @@ def plot(audio,
     axarr[-1].set_xlabel("Time (s)")
     plt.show()
 
-
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
-                                     description=textwrap.dedent("""
-        Click detector based on onset detection.
-        A click is detected if an onset is detected in all the frequency bands."""))
-    parser.add_argument(
-        '-v', "--verbose",
-        help="Set verbose output", action="store_const", const=logging.DEBUG,
-        dest="loglevel", default=logging.INFO)
-    parser.add_argument("input", help="Audio file.")
-    parser.add_argument("output", help="Output csv file with detections.")
-    parser.add_argument('--bandpass_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
-    parser.add_argument('--highpass_freq', type=int, default=1000, help='Cutoff frequency of the high pass filter.')
-    parser.add_argument("--threshold", type=float, default=THRESHOLD, help="Detection threshold")
-    parser.add_argument("--channel", type=int, default=0, help="Audio channel to process")
-    parser.add_argument("--time_range", type=float, nargs="+", default=[], help="Time range to process")
-    parser.add_argument("--show", type=int, default=0, help="""Plot audio, clicks
-            and some more stuff.""")
-    args = parser.parse_args()
-
-    logging.getLogger().setLevel(args.loglevel)
-
-    input = args.input
-    output = args.output
-    bandpass_freqs = args.bandpass_freqs
-    highpass_freq = args.highpass_freq
-    threshold = args.threshold
-    channel = args.channel
-    time_range = args.time_range
-    show = args.show
+    
+def process(input,
+            output,
+            bandpass_freqs=[10000, 15000, 15000, 20000],
+            highpass_freq=1000,
+            threshold=THRESHOLD,
+            channel=0,
+            time_range=[],
+            show=False):
 
     # open audio file
     audio, sr = sf.read(input, dtype="float32")
@@ -327,16 +305,25 @@ if __name__ == "__main__":
             int((c[0] + CLIPPING_WINDOW/2) * sr)
         ]
     )]
+    num_clipped_clicks_removed = num_clicks - len(clicks)
 
     # store in dict and save as pickle file
     d = dict()
     d['clicks'] = clicks
-    d['config'] = vars(args)
+    d['config'] = {
+        "input": input,
+        "output": output,
+        "bandpass_freqs": bandpass_freqs,
+        "highpass_freq": highpass_freq,
+        "threshold": threshold,
+        "channel": channel,
+        "time_range": time_range
+    }
     d['file'] = __file__
     repo = git.Repo(path, search_parent_directories=True)
     d['commit'] = repo.head.object.hexsha
     d['duration'] = duration
-    d['num_clicks_before_clipping_detection'] = num_clicks
+    d['num_clipped_clicks_removed'] = num_clipped_clicks_removed
     pickle.dump(d, open(output, 'wb'))
     
     if len(clicks) > 0:
@@ -356,3 +343,41 @@ if __name__ == "__main__":
 
     else:
         logger.info("No click found.")
+
+    return clicks, num_clipped_clicks_removed, duration
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     description=textwrap.dedent("""
+        Click detector based on onset detection.
+        A click is detected if an onset is detected in all the frequency bands."""))
+    parser.add_argument(
+        '-v', "--verbose",
+        help="Set verbose output", action="store_const", const=logging.DEBUG,
+        dest="loglevel", default=logging.INFO)
+    parser.add_argument("input", help="Audio file.")
+    parser.add_argument("output", help="Output csv file with detections.")
+    parser.add_argument('--bandpass_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
+    parser.add_argument('--highpass_freq', type=int, default=1000, help='Cutoff frequency of the high pass filter.')
+    parser.add_argument("--threshold", type=float, default=THRESHOLD, help="Detection threshold")
+    parser.add_argument("--channel", type=int, default=0, help="Audio channel to process")
+    parser.add_argument("--time_range", type=float, nargs="+", default=[], help="Time range to process")
+    parser.add_argument("--show", type=int, default=0, help="""Plot audio, clicks
+            and some more stuff.""")
+    args = parser.parse_args()
+    
+    logging.getLogger().setLevel(args.loglevel)
+
+    process(args.input, args.output,
+            bandpass_freqs=args.bandpass_freqs,
+            highpass_freq=args.highpass_freq,
+            threshold=args.threshold,
+            channel=args.channel,
+            time_range=args.time_range,
+            show=args.show)
+
+
+
+
