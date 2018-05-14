@@ -26,8 +26,9 @@ from click_detector import CLICK_DURATION
 path = os.path.dirname(os.path.abspath(__file__))
 
 
-# Min pulse salience, measure as the ratio of
-# click / pulse correlation to click autocorrelation
+# Threshold of pulse salience, measured as the ratio of
+# click / pulse correlation to click autocorrelation,
+# above which a pulse is detected.
 MIN_PULSE_SALIENCE = 0.08
 
 
