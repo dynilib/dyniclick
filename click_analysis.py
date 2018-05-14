@@ -26,6 +26,11 @@ from click_detector import CLICK_DURATION
 path = os.path.dirname(os.path.abspath(__file__))
 
 
+# Min pulse salience, measure as the ratio of
+# click / pulse correlation to click autocorrelation
+MIN_PULSE_SALIENCE = 0.08
+
+
 def build_butter_highpass(cut, sr, order=4):
     nyq = 0.5 * sr
     cut = cut / nyq
@@ -73,7 +78,6 @@ def process(
         compute_ipi,
         ipi_max,
         ipi_min,
-        min_pulse_salience,
         filter_by_ipi,
         tdoa_max
 ):
@@ -166,7 +170,7 @@ def process(
                     chunk_ipi,
                     ipi_min,
                     sr,
-                    min_pulse_salience)
+                    MIN_PULSE_SALIENCE)
                 param_values += [ipi, ipi_salience]
 
             if not filter_by_ipi or ipi:
@@ -214,8 +218,6 @@ if __name__ == "__main__":
     parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
     parser.add_argument("--ipi_min", type=float, default=0.0015, help="Minimum IPI to be detected, in s.")
     parser.add_argument("--ipi_max", type=float, default=0.008, help="Maximum IPI to be detected, in s.")
-    parser.add_argument("--min_pulse_salience", type=float, default=0.08, help="Min pulse salience, measure as the ratio between " +
-                        "click / pulse correlation to click autocorrelation.")
     parser.add_argument("--filter_by_ipi", type=int, default=1, help="Only keep clicks with pulse (i.e. with ipi != None.")
     parser.add_argument("--tdoa_max", type=float, default=0, help="Maximum cross-channel delay (or Time Delay Of Arrival) for a click, in s. TDOA is not computed if set to 0.") # 0.0005 s -> 0.75 m
     args = parser.parse_args()
@@ -231,7 +233,6 @@ if __name__ == "__main__":
         args.compute_ipi,
         args.ipi_max,
         args.ipi_min,
-        args.min_pulse_salience,
         args.filter_by_ipi,
         args.tdoa_max
     )
