@@ -27,8 +27,9 @@ logger = logging.getLogger(__name__)
 path = os.path.dirname(os.path.abspath(__file__))
 
 
+# default parameters
+HALF_HANN_DURATION = 0.01 # duration of the half-hann window used to smooth the signal, in s
 ENV_SR = 1000 # envelope sample rate, in Hz
-HALF_HANN_DURATION = 0.01 # in s
 THRESHOLD = 0.2 # detection threshold on the log-envelope derivative
 MIN_TIME_BETWEEN_CLICKS = 0.01 # in s. The value is supposed to be longer than largest possible IPI.
 CLIPPING_THRESHOLD = 0.999
@@ -278,11 +279,12 @@ def process(filename_in,
     # compute clipping mask
     clipping_mask = np.abs(audio) > CLIPPING_THRESHOLD
 
-    # highpass filter
+    # highpass filtering
     nyq = sr / 2.0
     b, a = butter(4, highpass_freq / nyq, btype='highpass')
     audio = filtfilt(b, a, audio)
 
+    # use specified time range
     offset = 0
     if time_range:
         offset = time_range[0]
