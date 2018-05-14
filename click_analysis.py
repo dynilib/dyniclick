@@ -75,7 +75,6 @@ def process(
         ipi_min,
         min_pulse_salience,
         filter_by_ipi,
-        compute_tdoa,
         tdoa_max
 ):
 
@@ -111,7 +110,7 @@ def process(
         if compute_ipi:
             param_names.append("ipi")
             param_names.append("ipi_salience")
-        if compute_tdoa:
+        if tdoa_max > 0:
             param_names.append("tdoa")
         param_names.append("spectrum_argmax")
         param_names.append("spectral_centroid")
@@ -155,7 +154,7 @@ def process(
                 if highpass_freq > 0:
                     chunk_ipi = filtfilt(b, a, chunk_ipi)
             # - the chunk on the second channel to measure the TDOA
-            if compute_tdoa and n_channels == 2:
+            if tdoa_max > 0 and n_channels == 2:
                 chunk_tdoa = audio[int((t-tdoa_max)*sr):int((t+tdoa_max+CLICK_DURATION)*sr), ch2]
                 if highpass_freq > 0:
                     chunk_tdoa = filtfilt(b, a, chunk_tdoa)
@@ -173,7 +172,7 @@ def process(
             if not filter_by_ipi or ipi:
 
                 # Estimate TDOA
-                if compute_tdoa:
+                if tdoa_max > 0:
                     tdoa = get_tdoa(click, chunk_tdoa, tdoa_max, sr)
                     param_values += [tdoa]
 
@@ -218,8 +217,7 @@ if __name__ == "__main__":
     parser.add_argument("--min_pulse_salience", type=float, default=0.08, help="Min pulse salience, measure as the ratio between " +
                         "click / pulse correlation to click autocorrelation.")
     parser.add_argument("--filter_by_ipi", type=int, default=1, help="Only keep clicks with pulse (i.e. with ipi != None.")
-    parser.add_argument("--compute_tdoa", type=int, default=1, help="Compute Time Difference Of Arrival (TDOA).")
-    parser.add_argument("--tdoa_max", type=float, default=0.0005, help="Maximum cross-channel delay for a click, in s.") # 0.0005 s -> 0.75 m
+    parser.add_argument("--tdoa_max", type=float, default=0, help="Maximum cross-channel delay (or Time Delay Of Arrival) for a click, in s. TDOA is not computed if set to 0.") # 0.0005 s -> 0.75 m
     args = parser.parse_args()
 
     logging.getLogger().setLevel(args.loglevel)
@@ -235,7 +233,6 @@ if __name__ == "__main__":
         args.ipi_min,
         args.min_pulse_salience,
         args.filter_by_ipi,
-        args.compute_tdoa,
         args.tdoa_max
     )
 
