@@ -310,7 +310,7 @@ def process(filename_in,
 
     # store in dict and save as pickle file
     d = dict()
-    d['clicks'] = clicks
+    d['clicks'] = np.asarray(clicks, dtype=np.float32)
     d['config'] = {
         "filename_in": filename_in,
         "filename_out": filename_out,
