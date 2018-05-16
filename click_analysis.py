@@ -13,6 +13,7 @@ import argparse
 from argparse import RawDescriptionHelpFormatter
 import textwrap
 
+from collections import defaultdict
 import soundfile as sf
 import numpy as np
 from scipy.signal import butter, filtfilt
@@ -103,27 +104,39 @@ def process(
     # process #
     ###########
 
-    with open(output_file, "w") as f:
+        d = defaultdict(list)
 
         # git info
         repo = git.Repo(path, search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
+        d["commit"] = repo.head.object.hexsha
+        d["file"] = __file__
+        d["duration"] = data["duration"]
+        d["config"] = {
+            "audio_file": audio_file,
+            "click_file": click_file,
+            "output_file": output_file,
+            "highpass_freq": highpass_freq,
+            "channels": channels,
+            "compute_ipi": compute_ipi,
+            "ipi_max": ipi_max,
+            "ipi_min": ipi_min,
+            "filter_by_ipi": filter_by_ipi,
+            "tdoa_max": tdoa_max
+        }
 
         # params
-        param_names = ["click_time", "click_value"]
+        d["col_names"] = ["click_time", "click_value"]
         if compute_ipi:
-            param_names.append("ipi")
-            param_names.append("ipi_salience")
+            d["col_names"].append("ipi")
+            d["col_names"].append("ipi_salience")
         if tdoa_max > 0:
-            param_names.append("tdoa")
-        param_names.append("spectrum_argmax")
-        param_names.append("spectral_centroid")
-        f.write("#" + ",".join(param_names) + "\n")
+            d["col_names"].append("tdoa")
+        d["col_names"].append("spectrum_argmax")
+        d["col_names"].append("spectral_centroid")
 
         if clicks.size == 0:
             sys.exit()
-    
+
         # check channels
         n_channels = len(channels)
         if n_channels < 1 or n_channels > 2:
@@ -189,7 +202,12 @@ def process(
                 spec_centroid = int(spectral_features.centroid(spec) * freq_bin)
                 param_values += [spec_argmax, spec_centroid]
 
-                f.write(",".join([str(p) for p in param_values]) + "\n")
+                d["features"].append(param_values)
+
+        d["features"] = np.asarray(d["features"], dtype=np.float32)
+
+        pickle.dump(d, open(output_file, 'wb'))
+
 
 if __name__ == "__main__":
 
