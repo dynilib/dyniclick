@@ -104,109 +104,109 @@ def process(
     # process #
     ###########
 
-        d = defaultdict(list)
+    d = defaultdict(list)
 
-        # git info
-        repo = git.Repo(path, search_parent_directories=True)
-        d["commit"] = repo.head.object.hexsha
-        d["file"] = __file__
-        d["duration"] = data["duration"]
-        d["config"] = {
-            "audio_file": audio_file,
-            "click_file": click_file,
-            "output_file": output_file,
-            "highpass_freq": highpass_freq,
-            "channels": channels,
-            "compute_ipi": compute_ipi,
-            "ipi_max": ipi_max,
-            "ipi_min": ipi_min,
-            "filter_by_ipi": filter_by_ipi,
-            "tdoa_max": tdoa_max
-        }
+    # git info
+    repo = git.Repo(path, search_parent_directories=True)
+    d["commit"] = repo.head.object.hexsha
+    d["file"] = __file__
+    d["duration"] = data["duration"]
+    d["config"] = {
+        "audio_file": audio_file,
+        "click_file": click_file,
+        "output_file": output_file,
+        "highpass_freq": highpass_freq,
+        "channels": channels,
+        "compute_ipi": compute_ipi,
+        "ipi_max": ipi_max,
+        "ipi_min": ipi_min,
+        "filter_by_ipi": filter_by_ipi,
+        "tdoa_max": tdoa_max
+    }
+
+    # params
+    d["col_names"] = ["click_time", "click_value"]
+    if compute_ipi:
+        d["col_names"].append("ipi")
+        d["col_names"].append("ipi_salience")
+    if tdoa_max > 0:
+        d["col_names"].append("tdoa")
+    d["col_names"].append("spectrum_argmax")
+    d["col_names"].append("spectral_centroid")
+
+    if clicks.size == 0:
+        sys.exit()
+
+    # check channels
+    n_channels = len(channels)
+    if n_channels < 1 or n_channels > 2:
+        raise ValueError("The number of channels must be 1 or 2")
+    if n_channels > 1:
+        ch1 = channels[0]
+    if n_channels == 2:
+        ch2 = channels[1]
+
+    # check cutoff
+    if highpass_freq > 0:
+        b, a = build_butter_highpass(highpass_freq, sr)
+
+    # check ipi related params
+    if not compute_ipi:
+        filter_by_ipi = 0
+
+    for t, v in clicks:
 
         # params
-        d["col_names"] = ["click_time", "click_value"]
-        if compute_ipi:
-            d["col_names"].append("ipi")
-            d["col_names"].append("ipi_salience")
-        if tdoa_max > 0:
-            d["col_names"].append("tdoa")
-        d["col_names"].append("spectrum_argmax")
-        d["col_names"].append("spectral_centroid")
-
-        if clicks.size == 0:
-            sys.exit()
-
-        # check channels
-        n_channels = len(channels)
-        if n_channels < 1 or n_channels > 2:
-            raise ValueError("The number of channels must be 1 or 2")
-        if n_channels > 1:
-            ch1 = channels[0]
-        if n_channels == 2:
-            ch2 = channels[1]
-
-        # check cutoff
+        param_values = [t, v]
+        
+        # Get needed audio chunks around the click: 
+        # - the click itself.
+        click = audio[int(t*sr):int((t+CLICK_DURATION)*sr), ch1]
+        
         if highpass_freq > 0:
-            b, a = build_butter_highpass(highpass_freq, sr)
-
-        # check ipi related params
-        if not compute_ipi:
-            filter_by_ipi = 0
-
-        for t, v in clicks:
-
-            # params
-            param_values = [t, v]
-            
-            # Get needed audio chunks around the click: 
-            # - the click itself.
-            click = audio[int(t*sr):int((t+CLICK_DURATION)*sr), ch1]
-            
+            click = filtfilt(b, a, click)
+        # - the chunk where the pulse is expected, on the same channel
+        #   (used to compute the IPI)
+        if compute_ipi:
+            chunk_ipi =  audio[int((t+ipi_min)*sr):int((t+CLICK_DURATION+ipi_max)*sr), ch1]
             if highpass_freq > 0:
-                click = filtfilt(b, a, click)
-            # - the chunk where the pulse is expected, on the same channel
-            #   (used to compute the IPI)
-            if compute_ipi:
-                chunk_ipi =  audio[int((t+ipi_min)*sr):int((t+CLICK_DURATION+ipi_max)*sr), ch1]
-                if highpass_freq > 0:
-                    chunk_ipi = filtfilt(b, a, chunk_ipi)
-            # - the chunk on the second channel to measure the TDOA
-            if tdoa_max > 0 and n_channels == 2:
-                chunk_tdoa = audio[int((t-tdoa_max)*sr):int((t+tdoa_max+CLICK_DURATION)*sr), ch2]
-                is_ch2_clipping = np.any(np.abs(chunk_tdoa)>CLIPPING_THRESHOLD)
-                if highpass_freq > 0 and not is_ch2_clipping:
-                    chunk_tdoa = filtfilt(b, a, chunk_tdoa)
-            
-            # Estimate IPI
-            if compute_ipi:
-                ipi, ipi_salience = get_ipi(
-                    click,
-                    chunk_ipi,
-                    ipi_min,
-                    sr,
-                    MIN_PULSE_SALIENCE)
-                param_values += [ipi, ipi_salience]
+                chunk_ipi = filtfilt(b, a, chunk_ipi)
+        # - the chunk on the second channel to measure the TDOA
+        if tdoa_max > 0 and n_channels == 2:
+            chunk_tdoa = audio[int((t-tdoa_max)*sr):int((t+tdoa_max+CLICK_DURATION)*sr), ch2]
+            is_ch2_clipping = np.any(np.abs(chunk_tdoa)>CLIPPING_THRESHOLD)
+            if highpass_freq > 0 and not is_ch2_clipping:
+                chunk_tdoa = filtfilt(b, a, chunk_tdoa)
+        
+        # Estimate IPI
+        if compute_ipi:
+            ipi, ipi_salience = get_ipi(
+                click,
+                chunk_ipi,
+                ipi_min,
+                sr,
+                MIN_PULSE_SALIENCE)
+            param_values += [ipi, ipi_salience]
 
-            if not filter_by_ipi or ipi:
+        if not filter_by_ipi or ipi:
 
-                # Estimate TDOA
-                if tdoa_max > 0:
-                    tdoa = np.NAN if is_ch2_clipping else get_tdoa(click, chunk_tdoa, tdoa_max, sr) 
-                    param_values += [tdoa]
+            # Estimate TDOA
+            if tdoa_max > 0:
+                tdoa = np.NAN if is_ch2_clipping else get_tdoa(click, chunk_tdoa, tdoa_max, sr) 
+                param_values += [tdoa]
 
-                # compute spectral features
-                spec = np.abs(np.fft.rfft(click, n=next_power_of_two(len(click))))
-                freq_bin = sr / 2 / len(spec)
-                spec_argmax = int(np.argmax(spec) * freq_bin)
-                spec_centroid = int(spectral_features.centroid(spec) * freq_bin)
-                param_values += [spec_argmax, spec_centroid]
+            # compute spectral features
+            spec = np.abs(np.fft.rfft(click, n=next_power_of_two(len(click))))
+            freq_bin = sr / 2 / len(spec)
+            spec_argmax = int(np.argmax(spec) * freq_bin)
+            spec_centroid = int(spectral_features.centroid(spec) * freq_bin)
+            param_values += [spec_argmax, spec_centroid]
 
-                d["features"].append(param_values)
+            d["features"].append(param_values)
 
-        d["features"] = np.asarray(d["features"], dtype=np.float32)
+    d["features"] = np.asarray(d["features"], dtype=np.float32)
 
-        pickle.dump(d, open(output_file, 'wb'))
+    pickle.dump(d, open(output_file, 'wb'))
 
 
 if __name__ == "__main__":
