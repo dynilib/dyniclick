@@ -12,6 +12,7 @@ import logging
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import textwrap
+import pickle
 
 import numpy as np
 import git
@@ -72,34 +73,17 @@ def track_clicks(clicks, amp_thres, click_interval_max, diff_max, polynomial_exp
     return tracks
 
 
-if __name__ == "__main__":
+def process(
+        click_file,
+        output_file,
+        amp_thres,
+        click_interval_max,
+        diff_max
+):
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
-                                     description=textwrap.dedent('''
-    Click tracking.
-    '''))
-    parser.add_argument(
-        '-v', "--verbose",
-        help="Set verbose output", action="store_const", const=logging.DEBUG,
-        dest="loglevel", default=logging.INFO)
-    parser.add_argument("click_file", help="Click file, with click time in col 0, click amplitude in col 1 and tdoa in col tdoa_col.")
-    parser.add_argument("output_file", help="Same as input, with an additional column specifying a track id, if a track is found.")
-    parser.add_argument("--tdoa_col", type=int, help="Index of the tdoa column.")
-    parser.add_argument("--amp_thres", type=float, default=0.1, help="Click amplitude threshold.")
-    parser.add_argument("--click_interval_max", type=float, default=0.1, help="Maximum interval between clicks before ending a track.")
-    parser.add_argument("--diff_max", type=float, default=2e-5, help="Maximum difference between expection and actual value to assign a click to a track .")
-    args = parser.parse_args()
-
-    logging.getLogger().setLevel(args.loglevel)
-
-    click_file = args.click_file
-    output_file = args.output_file
-    tdoa_col = args.tdoa_col
-    amp_thres = args.amp_thres
-    click_interval_max = args.click_interval_max
-    diff_max = args.diff_max
-
-    clicks = np.loadtxt(click_file, delimiter=",", usecols=[0,1,tdoa_col], ndmin=2)
+    data = pickle.load(open(click_file, "rb"))
+    tdoa_col = data["col_names"].index("tdoa")
+    clicks = data["features"][:,[0,1,tdoa_col]]
 
     tracks = track_clicks(clicks, amp_thres, click_interval_max, diff_max)
 
@@ -112,12 +96,47 @@ if __name__ == "__main__":
             ind = NO_TRACK_ID
         track_ind.append(ind)
 
-    with open(output_file, "w") as f:
+    d = dict()
+    # git info
+    repo = git.Repo(path, search_parent_directories=True)
+    d["commit"] = repo.head.object.hexsha
+    d["file"] = __file__
+    d["duration"] = data["duration"]
+    d["config"] = {
+        "click_file": click_file,
+        "output_file": output_file,
+        "amp_thres": amp_thres,
+        "click_interval_max": click_interval_max,
+        "diff_max": diff_max
+    }
+    d["tracks"] = track_ind
 
-        # git info
-        repo = git.Repo(path, search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        f.write("#{}\n#Commit {}\n#Parameters: {}\n".format(__file__, sha, args))
+    pickle.dump(d, open(output_file, 'wb'))
 
-        for i in track_ind:
-            f.write("{}\n".format(i))
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     description=textwrap.dedent('''
+    Click tracking.
+    '''))
+    parser.add_argument(
+        '-v', "--verbose",
+        help="Set verbose output", action="store_const", const=logging.DEBUG,
+        dest="loglevel", default=logging.INFO)
+    parser.add_argument("click_file", help="Click file, with click time in col 0, click amplitude in col 1 and tdoa in col tdoa_col.")
+    parser.add_argument("output_file", help="Same as input, with an additional column specifying a track id, if a track is found.")
+    parser.add_argument("--amp_thres", type=float, default=0.1, help="Click amplitude threshold.")
+    parser.add_argument("--click_interval_max", type=float, default=0.1, help="Maximum interval between clicks before ending a track.")
+    parser.add_argument("--diff_max", type=float, default=2e-5, help="Maximum difference between expection and actual value to assign a click to a track .")
+    args = parser.parse_args()
+
+    logging.getLogger().setLevel(args.loglevel)
+
+    process(
+        args.click_file,
+        args.output_file,
+        args.amp_thres,
+        args.click_interval_max,
+        args.diff_max
+    )
+
