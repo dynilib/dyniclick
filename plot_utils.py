@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
     # if track_file is set, add track ind to data
     if track_file:
-        track_ind = np.loadtxt(track_file, ndmin=2)
+        track_ind = pickle.load(open(track_file, 'rb'))["tracks"]
         data = np.hstack((data, track_ind))
 
     for i, t in enumerate(feat_thres):
