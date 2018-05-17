@@ -109,7 +109,7 @@ def process(
         "click_interval_max": click_interval_max,
         "diff_max": diff_max
     }
-    d["tracks"] = track_ind
+    d["tracks"] = np.atleast_2d(track_ind).T
 
     pickle.dump(d, open(output_file, 'wb'))
 
