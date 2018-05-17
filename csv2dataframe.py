@@ -12,6 +12,7 @@ import logging
 import datetime
 import pandas as pd
 import numpy as np
+import pickle
 
 import git
 
@@ -21,8 +22,8 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 path = os.path.dirname(os.path.abspath(__file__))
 
 
-DEFAULT_FEAT_FILE_EXT = "feat"
-DEFAULT_TRACK_FILE_EXT = "tracks"
+DEFAULT_FEAT_FILE_EXT = "feat.p"
+DEFAULT_TRACK_FILE_EXT = "tracks.p"
 
 DATE_REGEX = [
     r'(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})UTC',
@@ -65,7 +66,7 @@ def add_to_date(date, toadd):
     return d + datetime.timedelta(seconds=t)
 
 
-def process(feat_root, output, feat_names,
+def process(feat_root, output,
             feat_file_ext=DEFAULT_FEAT_FILE_EXT,
             track_root='', track_file_ext=DEFAULT_TRACK_FILE_EXT):
 
@@ -84,7 +85,8 @@ def process(feat_root, output, feat_names,
                         logging.warning("Wrong date format: {}".format(filename))
                         continue
 
-                    df_i = pd.read_csv(os.path.join(root, filename), names=feat_names, comment="#", dtype=np.float32)
+                    data = pickle.load(open(os.path.join(root, filename), "rb"))
+                    df_i = pd.DataFrame(data["features"], columns=data["col_names"])
                     if df_i.empty:
                         logging.debug("{} empty".format(filename))
                         continue
@@ -92,13 +94,15 @@ def process(feat_root, output, feat_names,
                     # Add click time to date.
                     # Click time must be in second and 
                     # in first column.
+
                     df_i[df_i.columns[0]] = df_i[df_i.columns[0]].apply(
                         lambda t: date + datetime.timedelta(seconds=float(t))
                     )
 
                     # Add track
                     if track_root:
-                        track_ids = np.loadtxt(os.path.join(root, filename.replace(feat_file_ext, track_file_ext)), ndmin=1, dtype=np.int32)
+                        #track_ids = np.loadtxt(os.path.join(root, filename.replace(feat_file_ext, track_file_ext)), ndmin=1, dtype=np.int32)
+                        track_ids = pickle.load(open(os.path.join(root, filename.replace(feat_file_ext, track_file_ext)), "rb"))["tracks"]
                         max_track_id = max(track_ids)
                         track_ids[track_ids>-1] += last_track_id
                         df_i['track_id'] = track_ids
@@ -122,21 +126,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Concatenate click feature files into a compressed Pandas\' DataFrame..')
     parser.add_argument("feat_root", help="Feature files root.")
     parser.add_argument("output", help="Output file.")
-    parser.add_argument('--feat_names', type=str, nargs='+', help='Feature names.')
     parser.add_argument("--feat_file_ext", type=str, default=DEFAULT_FEAT_FILE_EXT, help="Feature file extension.")
     parser.add_argument("--track_root", type=str, default='', help=" Track files root.")
     parser.add_argument("--track_file_ext", type=str, default=DEFAULT_TRACK_FILE_EXT, help="Track file extension.")
     args = parser.parse_args()
 
-    feat_root = args.feat_root
-    output = args.output
-    feat_names = args.feat_names
-    feat_file_ext = args.feat_file_ext
-    track_root = args.track_root
-    track_file_ext = args.track_file_ext
+    df = process(args.feat_root, args.output, args.feat_file_ext, args.track_root, args.track_file_ext)
 
-    df = process(feat_root, output, feat_names, feat_file_ext, track_root, track_file_ext)
-
-    store = pd.HDFStore(output, complib='zlib', complevel=5)
+    store = pd.HDFStore(args.output, complib='zlib', complevel=5)
     store['clicks'] = df
     store.close()
