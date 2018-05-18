@@ -24,7 +24,7 @@ def plot_click_feat(data):
 
     # map track_ind to color
     # track_id is last columns
-    colorlist = ['g', 'r', 'c', 'm', 'y', 'b', 'w']
+    colorlist = ['g', 'r', 'c', 'm', 'y', 'b']
     colors = ['k' if d == -1 else colorlist[int(d%(len(colorlist)-1))] for d in data['track_id'].tolist()]
     
     t = data.index.to_pydatetime()
