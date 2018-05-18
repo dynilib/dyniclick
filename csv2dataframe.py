@@ -102,7 +102,7 @@ def process(feat_root, output,
                     # Add track
                     if track_root:
                         #track_ids = np.loadtxt(os.path.join(root, filename.replace(feat_file_ext, track_file_ext)), ndmin=1, dtype=np.int32)
-                        track_ids = pickle.load(open(os.path.join(root, filename.replace(feat_file_ext, track_file_ext)), "rb"))["tracks"]
+                        track_ids = pickle.load(open(os.path.join(root, filename.replace(feat_file_ext, track_file_ext)), "rb"))["tracks"][:,0]
                         max_track_id = max(track_ids)
                         track_ids[track_ids>-1] += last_track_id
                         df_i['track_id'] = track_ids
