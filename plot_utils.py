@@ -14,9 +14,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 
-def plot_click_feat(data, min_amp=0.1):
-
-    data = data.loc[data['click_amp']>min_amp]
+def plot_click_feat(data):
 
     feat_names = [c for c in data.columns[:-1]]
     
