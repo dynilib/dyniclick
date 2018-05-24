@@ -359,7 +359,7 @@ if __name__ == "__main__":
         help="Set verbose output", action="store_const", const=logging.DEBUG,
         dest="loglevel", default=logging.INFO)
     parser.add_argument("filename_in", help="Audio file.")
-    parser.add_argument("filename_out", help="Output csv file with detections.")
+    parser.add_argument("filename_out", help="Output pickle file with detections.")
     parser.add_argument('--bandpass_freqs', type=int, nargs='+', default=[10000, 15000, 15000, 20000], help='Cutoff frequencies of the bandpass filters.')
     parser.add_argument('--highpass_freq', type=int, default=1000, help='Cutoff frequency of the high pass filter.')
     parser.add_argument("--threshold", type=float, default=THRESHOLD, help="Detection threshold")
