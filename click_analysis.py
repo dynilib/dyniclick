@@ -21,7 +21,7 @@ import pickle
 import git
 
 import spectral_features
-from click_detector import CLICK_DURATION, CLIPPING_THRESHOLD
+from click_detection import CLICK_DURATION, CLIPPING_THRESHOLD
 
 
 path = os.path.dirname(os.path.abspath(__file__))
