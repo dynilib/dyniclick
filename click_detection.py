@@ -226,13 +226,30 @@ def plot(audio,
     bandpass_freqs.sort()
 
     # plot stuff
-    f, axarr = plt.subplots((len(bands)+1), sharex=True)
+    fig, axarr = plt.subplots((len(bands)+1), sharex=True)
     x = np.arange(len(audio)) / sr + offset
     #axarr[0] = fig.add_subplot(len(bands) + 1, 1, 1)
-    axarr[0].plot(x, audio, 'b')
-    axarr[0].set_title("Full band: Audio signal + final clicks")
-    axarr[0].xaxis.grid()
-    axarr_ = axarr[0].twinx()
+
+    x_dec = np.arange(len(ders[0])) / ENV_SR + delay + offset
+
+    for i in range(len(bands)):
+
+        axarr[i].plot(x, bands[i], 'k')
+#        axarr[i].set_title("Band {}-{} Hz: Audio + derivatives + detections".format(bandpass_freqs[-i*2-2], bandpass_freqs[-i*2-1]))
+        axarr[i].xaxis.grid()
+        axarr_ = axarr[i].twinx()
+        axarr_.plot(x_dec, ders[i], 'g')
+        axarr_.yaxis.grid()
+        t = np.asarray([t for t, _ in detections[i]]) + offset
+        c = np.asarray([v for _, v in detections[i]])
+        axarr[i].scatter(t, c, marker="x")
+        axarr[i].set_xlim(left=offset)
+    
+    i += 1
+    axarr[i].plot(x, audio, 'k')
+#    axarr[i].set_title("Full band: Audio signal + final clicks")
+    axarr[i].xaxis.grid()
+    axarr_ = axarr[i].twinx()
     t = np.asarray([t for t, _ in clicks]) + offset
     c = np.asarray([v for _, v in clicks])
     axarr_.scatter(t, c, marker="x", c="r")
@@ -240,23 +257,9 @@ def plot(audio,
     axarr_.set_xlim(left=offset)
     axarr_.yaxis.grid()
 
-    x_dec = np.arange(len(ders[0])) / ENV_SR + delay + offset
-
-    for i in range(len(bands)):
-
-        axarr[1+i].plot(x, bands[i], 'g')
-        axarr[1+i].set_title("Band {}-{} Hz: Audio + derivatives + detections".format(bandpass_freqs[-i*2-2], bandpass_freqs[-i*2-1]))
-        axarr[1+i].xaxis.grid()
-        axarr_ = axarr[1+i].twinx()
-        axarr_.plot(x_dec, ders[i], 'r')
-        axarr_.yaxis.grid()
-        t = np.asarray([t for t, _ in detections[i]]) + offset
-        c = np.asarray([v for _, v in detections[i]])
-        axarr[1+i].scatter(t, c, marker="x")
-        axarr[1+i].set_xlim(left=offset)
-
     axarr[-1].set_xlabel("Time (s)")
-    plt.show()
+
+    return fig
 
     
 def process(filename_in,
@@ -330,7 +333,7 @@ def process(filename_in,
     if len(clicks) > 0:
 
         if show:
-            plot(audio,
+            fig = plot(audio,
                  sr,
                  ENV_SR,
                  clicks,
@@ -341,6 +344,7 @@ def process(filename_in,
                  bandpass_freqs,
                  delay,
                  offset)
+            return fig
 
     else:
         logger.info("No click found.")
