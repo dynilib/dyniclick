@@ -10,7 +10,7 @@ import sys
 import argparse
 import numpy as np
 import pickle
-
+import pandas as pd
 import matplotlib.pyplot as plt
 
 
@@ -79,6 +79,34 @@ def plot_data(click_file, data, feat_names, time_offset, track_file):
 #    plt.tight_layout()
 
     plt.show()
+
+
+def get_highest_probability(df, freq, thres, tdoa_max = 1.25e-3, nbins=50):
+
+    indices = df.groupby(pd.TimeGrouper(freq)).indices
+
+
+    bins = np.linspace(-tdoa_max, tdoa_max, nbins)
+
+    new_df = pd.DataFrame()
+
+    for k, v in indices.items():
+
+        sdf = df.iloc[v]
+
+        hist, bins = np.histogram(sdf['tdoa'].values, bins=bins)
+        hist = hist / np.sum(hist)
+        ind_sort = np.argsort(hist)[::-1]
+        s = 0
+        for i, j in enumerate(ind_sort):
+            s += hist[j]
+            if s > thres:
+                break
+
+        for k in ind_sort[:i+1]:
+            new_df = new_df.append(sdf[(sdf.tdoa>=bins[k]) & (sdf.tdoa<bins[k+1])])
+
+    return new_df
 
     
 if __name__ == "__main__":
