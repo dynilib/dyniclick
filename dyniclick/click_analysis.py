@@ -238,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument("--compute_ipi", type=int, default=1, help="Compute Inter-Pulse Interval (IPI).")
     parser.add_argument("--ipi_min", type=float, default=0.0015, help="Minimum IPI to be detected, in s.")
     parser.add_argument("--ipi_max", type=float, default=0.008, help="Maximum IPI to be detected, in s.")
-    parser.add_argument("--filter_by_ipi", type=int, default=1, help="Only keep clicks with pulse (i.e. with ipi != None.")
+    parser.add_argument("--filter_by_ipi", type=int, default=1, help="Only keep clicks with pulse (i.e. with ipi != None).")
     parser.add_argument("--tdoa_max", type=float, default=0, help="Maximum cross-channel delay (or Time Delay Of Arrival) for a click, in s. TDOA is not computed if set to 0.") # 0.0005 s -> 0.75 m
     args = parser.parse_args()
 
