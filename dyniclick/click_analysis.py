@@ -125,7 +125,7 @@ def process(
     }
 
     # params
-    d["col_names"] = ["click_time", "click_value"]
+    d["col_names"] = ["click_time", "amplitude"]
     if compute_ipi:
         d["col_names"].append("ipi")
         d["col_names"].append("ipi_salience")
