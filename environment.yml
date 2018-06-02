@@ -1,4 +1,4 @@
-name: click_detector
+name: click_detection
 channels:
   - conda-forge
   - defaults
