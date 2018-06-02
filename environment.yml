@@ -1,4 +1,4 @@
-name: click_detection
+name: dyniclick
 channels:
   - conda-forge
   - defaults
