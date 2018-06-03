@@ -22,8 +22,8 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 path = os.path.dirname(os.path.abspath(__file__))
 
 
-DEFAULT_FEAT_FILE_EXT = "feat.p"
-DEFAULT_TRACK_FILE_EXT = "tracks.p"
+DEFAULT_FEAT_FILE_EXT = "feat.pk"
+DEFAULT_TRACK_FILE_EXT = "tracks.pk"
 
 DATE_REGEX = [
     r'(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})UTC',
@@ -83,7 +83,7 @@ def process(feat_root, output,
 
                     if not date:
                         logging.warning("Wrong date format: {}".format(filename))
-                        continue
+                        date =  datetime.datetime(2000,1,1) # set default date
 
                     data = pickle.load(open(os.path.join(root, filename), "rb"))
                     df_i = pd.DataFrame(data["features"], columns=data["col_names"])
