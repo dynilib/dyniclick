@@ -60,3 +60,16 @@ python dyniclick/click_tracking.py examples/example.feat.pk examples/example.tra
 ```sh
 python dyniclick/plot_utils.py examples/example.feat.pk --feat_cols 1 4 2 5 --feat_scale 1 1000 1000 0.001 --track_file examples/example.tracks.pk
 ```
+
+## Concatenate click data files
+
+```sh
+python dyniclick/concatenate_data.py examples/ examples/dataframe.h5 --track_root examples/
+```
+
+## Explore clicks in the dataframe
+
+```sh
+jupyter notebook examples/dataframe.ipynb
+```
+
